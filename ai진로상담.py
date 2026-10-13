@@ -1,3 +1,3 @@
 import streamlit as st
 st.title('ai 진로상담')
-st.write('이다은')
+st.write('내용')
