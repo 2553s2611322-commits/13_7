@@ -1,113 +1,96 @@
-    scores = {name: 0 for name in TYPE_INFO}
-    for idx, (_, kind) in enumerate(QUESTIONS):
-        answer = st.session_state.answers.get(str(idx))
-        if answer in CHOICES:
-            scores[kind] += CHOICES[answer]
-    return scores
+import streamlit as st
 
-# ---------- 상단 ----------
+st.set_page_config(
+    page_title="나의 진로 탐험실",
+    page_icon="🧭",
+    layout="wide",
+    initial_sidebar_state="collapsed",
+)
+
+# ---------- 기본 데이터 ----------
+TYPE_INFO = {
+    "탐구형": {
+        "emoji": "🔬",
+        "tagline": "질문하고 분석하며 답을 찾는 탐구자",
+        "description": "궁금한 점을 깊이 파고들고, 자료와 근거를 바탕으로 문제를 해결하는 활동에 흥미가 있어요.",
+        "careers": ["연구원", "데이터 분석가", "과학자", "의료·보건 분야", "소프트웨어 개발자"],
+        "tips": ["관심 있는 주제를 정해 자료를 찾아보고 요약해 보세요.", "과학·수학·정보 관련 프로젝트를 경험해 보세요."],
+    },
+    "창의형": {
+        "emoji": "🎨",
+        "tagline": "새로운 아이디어를 만드는 창작자",
+        "description": "기존의 방식에 얽매이기보다 상상력을 발휘하고, 자신만의 아이디어를 표현하는 활동을 좋아해요.",
+        "careers": ["디자이너", "콘텐츠 기획자", "작가", "영상·미디어 제작자", "광고 기획자"],
+        "tips": ["떠오르는 아이디어를 글·그림·영상으로 표현해 보세요.", "작은 창작 프로젝트를 끝까지 완성해 보세요."],
+    },
+    "사회형": {
+        "emoji": "🤝",
+        "tagline": "사람과 함께 성장하는 소통가",
+        "description": "다른 사람의 이야기를 듣고 돕거나, 함께 협력하며 목표를 이루는 활동에서 보람을 느껴요.",
+        "careers": ["교사", "상담사", "사회복지사", "간호사", "인사·교육 담당자"],
+        "tips": ["모둠 활동에서 의견을 조율하거나 발표 역할을 맡아 보세요.", "봉사나 또래 멘토링처럼 사람을 돕는 경험을 해 보세요."],
+    },
+    "현실형": {
+        "emoji": "🛠️",
+        "tagline": "직접 만들고 실행하는 실천가",
+        "description": "도구를 사용하거나 직접 움직여 결과물을 만드는 등 구체적이고 실용적인 활동을 선호해요.",
+        "careers": ["기계·전기 기술자", "건축 분야", "조리사", "제품 개발·제작", "스포츠 지도자"],
+        "tips": ["만들기·실험·수리 등 손으로 직접 해보는 활동을 찾아보세요.", "관심 분야의 실습이나 체험 프로그램에 참여해 보세요."],
+    },
+    "관습형": {
+        "emoji": "📊",
+        "tagline": "계획하고 정리하는 체계적인 관리자",
+        "description": "정보를 정확하게 정리하고, 순서와 규칙에 따라 일을 처리하는 활동에 강점이 있을 수 있어요.",
+        "careers": ["회계·세무 분야", "사무 행정", "기록·자료 관리", "물류 관리", "프로젝트 운영"],
+        "tips": ["할 일을 목록으로 정리하고 우선순위를 정해 보세요.", "스프레드시트나 일정 관리 도구를 활용해 보세요."],
+    },
+}
+
+QUESTIONS = [
+    ("새로운 주제의 원리나 이유를 찾아보는 것이 재미있다.", "탐구형"),
+    ("자료를 비교하거나 숫자를 분석해 결론을 내리는 편이다.", "탐구형"),
+    ("새로운 이야기, 그림, 디자인 또는 콘텐츠를 만드는 것이 좋다.", "창의형"),
+    ("정답이 정해지지 않은 문제에서 다양한 아이디어를 내는 편이다.", "창의형"),
+    ("친구의 고민을 들어주거나 누군가를 도울 때 보람을 느낀다.", "사회형"),
+    ("사람들과 역할을 나누고 협력해서 일하는 것이 좋다.", "사회형"),
+    ("직접 조립하거나 만들고, 도구를 사용해 결과를 내는 것이 좋다.", "현실형"),
+    ("설명만 듣기보다 직접 해보면서 배우는 것이 편하다.", "현실형"),
+    ("정보와 물건을 정리하고 계획에 맞춰 진행하는 것이 좋다.", "관습형"),
+    ("세부 사항을 확인하고 실수를 줄이는 일에 자신이 있다.", "관습형"),
+]
+
+CHOICES = {
+    "매우 그렇다": 5,
+    "그렇다": 4,
+    "보통이다": 3,
+    "그렇지 않다": 2,
+    "전혀 그렇지 않다": 1,
+}
+
+# ---------- 디자인 ----------
 st.markdown("""
-<div class="hero">
-  <div class="eyebrow">CAREER EXPLORATION · 진로 탐험실</div>
-  <h1>나의 흥미와 적성 발견하기 🧭</h1>
-  <p>간단한 질문에 답하고, 나에게 어울릴 수 있는 활동과 직업 분야를 살펴보세요.</p>
-</div>
+<style>
+    .stApp { background: linear-gradient(135deg, #f3f8ff 0%, #eef4fb 100%); }
+    .block-container { max-width: 1050px; padding-top: 2rem; padding-bottom: 3rem; }
+    .hero { background: #d8e9f8; border: 1px solid #b8d0e6; border-radius: 26px; padding: 28px 30px; }
+    .eyebrow { color: #416783; font-weight: 700; letter-spacing: .08em; font-size: .82rem; }
+    .hero h1 { color: #203d54; margin: 8px 0; font-size: 2.35rem; }
+    .hero p { color: #38566d; font-size: 1.05rem; margin-bottom: 0; }
+    .panel { background: rgba(255,255,255,.85); border: 1px solid #d7e3ee; border-radius: 20px; padding: 22px; }
+    .result-title { color: #203d54; font-size: 1.8rem; font-weight: 800; }
+    div.stButton > button { border-radius: 12px; min-height: 3rem; font-weight: 700; }
+    div[data-testid="stProgress"] > div > div { background-color: #4f83ad; }
+    .small-note { color: #60788b; font-size: .9rem; }
+</style>
 """, unsafe_allow_html=True)
-st.write("")
 
-if st.session_state.page == "intro":
-    left, right = st.columns([1.25, 1], gap="large")
-    with left:
-        st.markdown('<div class="panel">', unsafe_allow_html=True)
-        st.subheader("✨ 검사 안내")
-        st.write("총 10개의 문항으로 평소의 흥미와 활동 선호도를 살펴봅니다.")
-        st.write("각 문항에 대해 가장 가까운 답을 선택하면 유형별 점수와 추천 직업 분야를 확인할 수 있어요.")
-        st.markdown("**예상 소요 시간:** 약 2~3분")
-        st.markdown("**답변 방법:** 맞고 틀린 답은 없어요. 평소의 나를 떠올리며 솔직하게 선택해 주세요.")
-        st.markdown("</div>", unsafe_allow_html=True)
-    with right:
-        st.markdown('<div class="panel">', unsafe_allow_html=True)
-        st.subheader("🔎 살펴볼 수 있는 유형")
-        for name, info in TYPE_INFO.items():
-            st.write(f"{info['emoji']} **{name}** — {info['tagline']}")
-        st.markdown("</div>", unsafe_allow_html=True)
-    st.info("이 검사는 자기 이해를 돕기 위한 간단한 참고용 활동이며, 전문적인 진로검사를 대신하지 않습니다.")
-    if st.button("검사 시작하기 →", type="primary", use_container_width=True):
-        st.session_state.page = "questions"
-        st.rerun()
+if "page" not in st.session_state:
+    st.session_state.page = "intro"
+if "answers" not in st.session_state:
+    st.session_state.answers = {}
 
-elif st.session_state.page == "questions":
-    st.subheader("📝 나에 대해 답해 보기")
-    answered = sum(1 for i in range(len(QUESTIONS)) if str(i) in st.session_state.answers)
-    st.progress(answered / len(QUESTIONS), text=f"진행 상황: {answered}/{len(QUESTIONS)} 문항")
-    st.caption("각 문항에서 하나를 선택해 주세요.")
-    with st.form("career_quiz"):
-        for idx, (question, _) in enumerate(QUESTIONS):
-            st.markdown(f"**{idx + 1}. {question}**")
-            current = st.session_state.answers.get(str(idx), "보통이다")
-            choice = st.radio(
-                "답변을 선택하세요",
-                list(CHOICES.keys()),
-                index=list(CHOICES.keys()).index(current),
-                key=f"question_{idx}",
-                horizontal=True,
-                label_visibility="collapsed",
-            )
-            # 폼 제출 시 저장할 답변을 별도 키에 둡니다.
-            st.session_state[f"draft_{idx}"] = choice
-            if idx != len(QUESTIONS) - 1:
-                st.divider()
-        submitted = st.form_submit_button("결과 확인하기 →", type="primary", use_container_width=True)
-    if submitted:
-        st.session_state.answers = {
-            str(i): st.session_state.get(f"question_{i}", "보통이다")
-            for i in range(len(QUESTIONS))
-        }
-        st.session_state.page = "result"
-        st.rerun()
-    if st.button("처음 화면으로 돌아가기", use_container_width=True):
-        st.session_state.page = "intro"
-        st.rerun()
+def reset_test():
+    st.session_state.page = "intro"
+    st.session_state.answers = {}
 
-elif st.session_state.page == "result":
-    scores = calculate_scores()
-    ranked = sorted(scores.items(), key=lambda item: item[1], reverse=True)
-    top_score = ranked[0][1]
-    top_types = [name for name, score in ranked if score == top_score]
-    main_type = top_types[0]
-    info = TYPE_INFO[main_type]
-
-    st.markdown(f'<div class="panel"><div class="eyebrow">YOUR RESULT · 검사 결과</div><div class="result-title">{info["emoji"]} 나의 주요 유형: { " · ".join(top_types) }</div><p>{info["tagline"]}</p><p>{info["description"]}</p></div>', unsafe_allow_html=True)
-    st.write("")
-    col_a, col_b = st.columns([1, 1], gap="large")
-    with col_a:
-        st.subheader("📈 유형별 점수")
-        max_score = max(scores.values()) if scores else 1
-        for name, score in sorted(scores.items(), key=lambda item: item[1], reverse=True):
-            st.write(f"**{TYPE_INFO[name]['emoji']} {name}** · {score}/10")
-            st.progress(score / max_score if max_score else 0)
-        st.caption("점수는 각 유형에 해당하는 문항 2개의 답변을 합산한 값입니다.")
-    with col_b:
-        st.subheader("💼 탐색해 볼 직업 분야")
-        for career in info["careers"]:
-            st.markdown(f"- {career}")
-        st.subheader("🌱 다음 단계")
-        for tip in info["tips"]:
-            st.markdown(f"- {tip}")
-
-    if len(top_types) > 1:
-        st.info("여러 유형의 점수가 같아요. 아래 추천은 동점 유형 중 하나를 기준으로 표시했으니, 함께 나온 유형들도 같이 살펴보세요.")
-    st.markdown("---")
-    st.markdown("**기억해 주세요:** 한 가지 유형이 모든 가능성을 결정하지는 않아요. 관심사와 경험은 시간이 지나며 달라질 수 있습니다.")
-    col1, col2 = st.columns(2)
-    with col1:
-        if st.button("답변 다시 살펴보기", use_container_width=True):
-            st.session_state.page = "questions"
-            st.rerun()
-    with col2:
-        if st.button("처음부터 다시 검사하기 ↻", type="primary", use_container_width=True):
-            reset_test()
-            st.rerun()
-
-st.write("")
-st.markdown('<p class="small-note" style="text-align:center;">나의 진로 탐험실 · 자기 이해를 위한 교육용 간이 검사</p>', unsafe_allow_html=True)
+def calculate_scores():
