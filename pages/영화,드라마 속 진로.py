@@ -1,10 +1,11 @@
 import os
 import json
+import urllib.request
+import urllib.error
 import streamlit as st
-import google.generativeai as genai
 
 # ==========================================
-# 1. 페이지 기본 설정 & 커스텀 CSS (깔끔한 UI)
+# 1. 페이지 기본 설정 & 커스텀 CSS
 # ==========================================
 st.set_page_config(
     page_title="영화·드라마 속 진로 탐색",
@@ -13,7 +14,6 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# UI 스타일링
 st.markdown("""
     <style>
     .main-header {
@@ -28,13 +28,6 @@ st.markdown("""
         color: #64748B;
         text-align: center;
         margin-bottom: 2rem;
-    }
-    .career-card {
-        background-color: #F8FAFC;
-        border: 1px solid #E2E8F0;
-        border-radius: 12px;
-        padding: 20px;
-        margin-bottom: 15px;
     }
     .job-tag {
         display: inline-block;
@@ -54,7 +47,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ==========================================
-# 2. 내장 데이터베이스 (Fallback 및 기본 추천)
+# 2. 내장 데이터베이스 (기본 데이터)
 # ==========================================
 DEFAULT_JOBS = {
     "의사": {
@@ -107,152 +100,4 @@ DEFAULT_JOBS = {
         "type": "드라마",
         "poster": "https://images.unsplash.com/photo-1585829365295-ab7cd400c167?auto=format&fit=crop&w=600&q=80",
         "video_url": "https://www.youtube.com/watch?v=pAnK1xThM9Y",
-        "synopsis": "방송국 뉴스를 무대로 기상캐스터와 아나운서, 기자 간의 치열한 경쟁과 사랑을 다룬 치열한 언론 미디어 현장의 이야기입니다.",
-        "job_desc": "아나운서는 뉴스나 프로그램을 진행하며 신뢰성 있게 정보를 전달합니다. 정확한 발음, 전달력, 순간 대응 능력이 매우 핵심적입니다.",
-        "skills": ["스피치 및 정확한 발음", "순발력 및 순응력", "정보 분석 능력", "신뢰감 있는 태도"]
-    }
-}
-
-# ==========================================
-# 3. Gemini AI 연동 함수 (비동기 및 예외 처리)
-# ==========================================
-def fetch_job_info_from_gemini(query_job):
-    """Gemini 2.5 Flash Lite를 활용해 검색 직업에 대한 작품 정보 생성"""
-    api_key = st.secrets.get("GEMINI_API_KEY") or os.environ.get("GEMINI_API_KEY")
-    
-    if not api_key:
-        return None, "GEMINI_API_KEY가 설정되어 있지 않습니다. 기본 데이터베이스에서 검색을 시도합니다."
-
-    try:
-        genai.configure(api_key=api_key)
-        model = genai.GenerativeModel("gemini-2.5-flash-lite")
-        
-        prompt = f"""
-        당신은 영화/드라마 및 진로 정보 전문가입니다.
-        직업/진로 이름: "{query_job}"
-
-        다음 직업이 주요 역할로 나타나는 대표적인 영화나 드라마 1개를 선정하고, 아래 JSON 형식으로만 응답해 주세요. 다른 설명은 포함하지 마세요.
-
-        {{
-            "title": "작품 제목",
-            "type": "영화 또는 드라마",
-            "poster": "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?auto=format&fit=crop&w=600&q=80",
-            "video_url": "https://www.youtube.com/results?search_query=작품제목+하이라이트",
-            "synopsis": "작품의 줄거리 2-3문장 요약",
-            "job_desc": "해당 직업이 하는 일과 직무 특성 2문장 설명",
-            "skills": ["필요 역량1", "필요 역량2", "필요 역량3", "필요 역량4"]
-        }}
-        """
-        response = model.generate_content(
-            prompt,
-            generation_config={"response_mime_type": "application/json"}
-        )
-        
-        data = json.loads(response.text)
-        return data, None
-    except Exception as e:
-        return None, f"AI 정보 생성 중 오류 발생: {str(e)}"
-
-# ==========================================
-# 4. 앱 헤더 및 검색 섹션
-# ==========================================
-st.markdown("<div class='main-header'>🎬 영화·드라마 속 진로 탐색기</div>", unsafe_allow_html=True)
-st.markdown("<div class='sub-header'>관심 있는 직업을 검색하고 미디어 속 주인공의 실제 역할과 직무를 탐색해보세요!</div>", unsafe_allow_html=True)
-
-# 검색 입력
-search_col1, search_col2 = st.columns([4, 1])
-with search_col1:
-    user_input = st.text_input(
-        "탐색하고 싶은 진로/직업을 입력하세요", 
-        placeholder="예: 의사, 변호사, 요리사, 개발자, 경찰, 아나운서, 건축가 등",
-        label_visibility="collapsed"
-    )
-with search_col2:
-    search_button = st.button("🔍 진로 탐색", use_container_width=True)
-
-# 세션 상태 관리 (선택된 직업 저장)
-if "selected_job" not in st.session_state:
-    st.session_state["selected_job"] = "의사"
-
-if search_button and user_input.strip():
-    st.session_state["selected_job"] = user_input.strip()
-
-current_job = st.session_state["selected_job"]
-
-# ==========================================
-# 5. 메인 컨텐츠 영역 (포스터, 영상, 줄거리, 직업 소개)
-# ==========================================
-st.divider()
-
-# 데이터 조회 (내장 DB -> AI 생성)
-job_data = None
-error_msg = None
-
-if current_job in DEFAULT_JOBS:
-    job_data = DEFAULT_JOBS[current_job]
-else:
-    with st.spinner(f"'{current_job}' 관련 영화/드라마 및 진로 정보를 분석 중입니다..."):
-        job_data, error_msg = fetch_job_info_from_gemini(current_job)
-        if error_msg and not job_data:
-            st.warning(f"⚠️ {error_msg}")
-            # AI 실패 시 유사 기본 데이터 대체 또는 안내
-            job_data = DEFAULT_JOBS["의사"]
-            current_job = "의사 (기본 추천)"
-
-if job_data:
-    st.subheader(f"📌 '{current_job}' 직업이 빛나는 추천 작품")
-    
-    col_left, col_right = st.columns([1, 1.2], gap="medium")
-    
-    # [좌측] 포스터 & 예고편/하이라이트 영상
-    with col_left:
-        st.image(job_data.get("poster"), use_container_width=True, caption=f"[{job_data.get('type')}] {job_data.get('title')}")
-        
-        video_url = job_data.get("video_url", "")
-        if video_url:
-            st.markdown("##### 🎥 작품 하이라이트 / 예고편")
-            try:
-                st.video(video_url)
-            except Exception:
-                st.markdown(f"[👉 YouTube에서 예고편 보기]({video_url})")
-
-    # [우측] 줄거리 & 입력 진로 소개
-    with col_right:
-        st.markdown(f"### **{job_data.get('title')}**")
-        st.markdown(f"<span class='job-tag'>{job_data.get('type')}</span>", unsafe_allow_html=True)
-        
-        st.markdown("#### 📖 작품 줄거리")
-        st.info(job_data.get("synopsis"))
-        
-        st.markdown(f"#### 💼 '{current_job}' 직무 상세 소개")
-        st.write(job_data.get("job_desc"))
-        
-        st.markdown("#### 🔑 핵심 필요 역량")
-        skills = job_data.get("skills", [])
-        if skills:
-            cols = st.columns(len(skills))
-            for idx, skill in enumerate(skills):
-                cols[idx % len(cols)].metric(label=f"역량 {idx+1}", value=skill)
-
-# ==========================================
-# 6. 하단: 타 진로/직업 탐색 & 클릭 시 정보 표시 (요청사항 반영)
-# ==========================================
-st.divider()
-st.subheader("💡 영화·드라마에 나오는 다양한 타 진로/직업 둘러보기")
-st.caption("아래 버튼을 클릭하면 해당 직업의 주요 설명과 추천 작품을 바로 확인할 수 있습니다.")
-
-other_jobs = [j for j in DEFAULT_JOBS.keys() if j != current_job]
-
-# 버튼 그리드 생성 (3열)
-grid_cols = st.columns(3)
-for idx, job_name in enumerate(other_jobs):
-    col = grid_cols[idx % 3]
-    with col:
-        if st.button(f"🎭 {job_name}", key=f"other_btn_{job_name}", use_container_width=True):
-            st.session_state["selected_job"] = job_name
-            st.rerun()
-
-# 하단 간단 설명 아코디언 가이드
-with st.expander("ℹ️ 전체 등록 직업 한눈에 알아보기"):
-    for key, info in DEFAULT_JOBS.items():
-        st.markdown(f"**• {key}** ({info['title']}): {info['job_desc']}")
+        "synopsis": "방송국 뉴스를 무대로 기상캐스터와 아나운서, 기자 간의 치열한 경쟁과 사랑
