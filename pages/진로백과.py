@@ -2,502 +2,518 @@
 import streamlit as st
 
 st.set_page_config(
-    page_title="진로책방 | 나의 미래를 찾는 책장",
+    page_title="꿈을 찾는 책장",
     page_icon="📚",
     layout="wide",
-    initial_sidebar_state="expanded",
+    initial_sidebar_state="collapsed",
 )
 
-# -----------------------------
-# 1. 앱 데이터
-# 시연용 데이터이며 실제 출판 도서 목록과는 다를 수 있습니다.
-# -----------------------------
+# -------------------------
+# 도서 데이터
+# 실제 출판 도서가 아닌 앱 시연용 예시 자료
+# -------------------------
+CATEGORIES = [
+    ("자연과학", "🧪", "#dceaff"),
+    ("공학", "🖥️", "#eae2ff"),
+    ("의료·보건", "💗", "#ffe0e5"),
+    ("예술·체육", "🎨", "#ffead3"),
+    ("인문·사회", "👥", "#d8f3e4"),
+    ("교육", "📖", "#fff0bf"),
+    ("경영·경제", "📊", "#d5f1f0"),
+    ("농림·수산", "🌿", "#e7f5cd"),
+    ("언론·미디어", "🎬", "#dce7ff"),
+    ("IT·디지털", "💻", "#e9ddff"),
+]
+
 BOOKS = [
     {
-        "id": 1,
-        "title": "의사라는 직업 알아보기",
-        "author": "진로책방 자료팀",
-        "field": "의학·보건",
-        "level": "입문",
-        "jobs": ["의사", "간호사", "약사"],
-        "description": "의료 분야의 주요 직업과 하는 일, 필요한 역량을 알아보는 진로 탐색 자료입니다.",
-        "reason": "사람의 건강을 지키는 일에 관심이 있는 학생에게 추천합니다.",
+        "id": 1, "title": "과학으로 만나는 미래의 직업들",
+        "field": "자연과학", "emoji": "🔬", "color": "#b9dcf4",
+        "author": "진로책방 자료팀", "level": "입문",
+        "jobs": "과학자, 생명과학자, 화학연구원",
+        "description": "자연의 원리를 연구하고 새로운 사실을 발견하는 과학 분야의 직업을 알아봅니다.",
+        "question": "내가 직접 연구해 보고 싶은 자연 현상은 무엇일까?",
+    },
+    {
+        "id": 2, "title": "세상을 만드는 공학 이야기",
+        "field": "공학", "emoji": "🏙️", "color": "#c9e5ec",
+        "author": "진로책방 자료팀", "level": "입문",
+        "jobs": "건축가, 기계공학자, 항공우주공학자",
+        "description": "우리 주변의 건물과 기계가 만들어지는 과정, 공학자의 역할을 소개합니다.",
+        "question": "내가 새롭게 만들고 싶은 발명품은 무엇일까?",
+    },
+    {
+        "id": 3, "title": "사람을 위한 의료의 세계",
+        "field": "의료·보건", "emoji": "🩺", "color": "#f7cbd5",
+        "author": "진로책방 자료팀", "level": "입문",
+        "jobs": "의사, 간호사, 약사",
+        "description": "사람의 건강을 지키는 다양한 의료 직업과 필요한 역량을 살펴봅니다.",
         "question": "의료 분야에서 가장 중요하다고 생각하는 태도는 무엇일까?",
-        "keywords": "병원 건강 치료 생명",
     },
     {
-        "id": 2,
-        "title": "생명과학자의 하루",
-        "author": "진로책방 자료팀",
-        "field": "과학·공학",
-        "level": "보통",
-        "jobs": ["생명과학자", "연구원", "생명공학자"],
-        "description": "생명 현상을 연구하는 과학자의 업무와 연구 과정, 필요한 과학적 사고를 소개합니다.",
-        "reason": "생물과 실험, 새로운 발견에 흥미가 있는 학생에게 어울립니다.",
-        "question": "과학 연구가 우리 생활을 어떻게 바꿀 수 있을까?",
-        "keywords": "생물 실험 연구 자연",
+        "id": 4, "title": "예술이 있는 행복한 삶",
+        "field": "예술·체육", "emoji": "🎨", "color": "#f8dfb7",
+        "author": "진로책방 자료팀", "level": "입문",
+        "jobs": "화가, 디자이너, 체육지도사",
+        "description": "창의적인 표현과 신체 활동을 통해 자신의 재능을 발전시키는 직업을 알아봅니다.",
+        "question": "내가 좋아하는 활동을 직업으로 연결할 수 있을까?",
     },
     {
-        "id": 3,
-        "title": "인공지능과 미래 직업",
-        "author": "진로책방 자료팀",
-        "field": "IT·AI",
-        "level": "입문",
-        "jobs": ["AI 개발자", "데이터 분석가", "로봇공학자"],
-        "description": "인공지능의 기본 개념과 디지털 기술을 활용하는 직업들을 살펴봅니다.",
-        "reason": "컴퓨터와 새로운 기술, 미래 사회의 변화가 궁금한 학생에게 추천합니다.",
-        "question": "인공지능이 발전해도 사람이 꼭 해야 할 일은 무엇일까?",
-        "keywords": "컴퓨터 코딩 데이터 로봇",
+        "id": 5, "title": "사회를 이해하는 사람들",
+        "field": "인문·사회", "emoji": "🌏", "color": "#d4eadc",
+        "author": "진로책방 자료팀", "level": "보통",
+        "jobs": "사회학자, 역사학자, 사회복지사",
+        "description": "사람과 사회의 관계를 연구하고 사회 문제를 해결하는 직업을 알아봅니다.",
+        "question": "우리 사회에서 함께 해결해야 할 문제는 무엇일까?",
     },
     {
-        "id": 4,
-        "title": "건축가의 공간 디자인",
-        "author": "진로책방 자료팀",
-        "field": "예술·디자인",
-        "level": "보통",
-        "jobs": ["건축가", "실내디자이너", "도시계획가"],
-        "description": "건물과 공간이 만들어지는 과정, 디자인과 안전을 함께 고려하는 방법을 알아봅니다.",
-        "reason": "그림 그리기와 공간 구성, 건물에 관심이 있는 학생에게 적합합니다.",
-        "question": "내가 만들고 싶은 공간에는 어떤 특징이 있어야 할까?",
-        "keywords": "건물 설계 공간 미술",
+        "id": 6, "title": "선생님이라는 멋진 꿈",
+        "field": "교육", "emoji": "📚", "color": "#ffedb8",
+        "author": "진로책방 자료팀", "level": "입문",
+        "jobs": "초등교사, 중등교사, 교육연구원",
+        "description": "학생의 성장을 돕는 교사의 역할과 교육 분야의 다양한 진로를 소개합니다.",
+        "question": "좋은 선생님에게 필요한 능력은 무엇일까?",
     },
     {
-        "id": 5,
-        "title": "선생님이라는 길",
-        "author": "진로책방 자료팀",
-        "field": "교육",
-        "level": "입문",
-        "jobs": ["초등교사", "중등교사", "교육연구원"],
-        "description": "교사의 역할과 수업 준비, 학생과 소통하는 방법을 살펴봅니다.",
-        "reason": "다른 사람에게 지식을 알려 주거나 함께 성장하는 일에 관심이 있다면 추천합니다.",
-        "question": "좋은 선생님에게 가장 필요한 능력은 무엇일까?",
-        "keywords": "학교 수업 학생 교육",
+        "id": 7, "title": "돈과 기업의 흥미로운 이야기",
+        "field": "경영·경제", "emoji": "📈", "color": "#c8eae7",
+        "author": "진로책방 자료팀", "level": "보통",
+        "jobs": "기업가, 회계사, 경제연구원",
+        "description": "기업이 운영되는 방식과 경제 활동, 창업에 필요한 생각을 살펴봅니다.",
+        "question": "좋은 기업은 어떤 역할을 해야 할까?",
     },
     {
-        "id": 6,
-        "title": "경제와 기업의 세계",
-        "author": "진로책방 자료팀",
-        "field": "경영·경제",
-        "level": "보통",
-        "jobs": ["기업가", "회계사", "경제연구원"],
-        "description": "기업이 운영되는 방식과 돈의 흐름, 경제 활동의 기본 원리를 소개합니다.",
-        "reason": "경제 뉴스나 기업 운영, 창업에 관심이 있는 학생에게 추천합니다.",
-        "question": "기업이 이익과 사회적 책임을 함께 추구하려면 어떻게 해야 할까?",
-        "keywords": "돈 금융 창업 회사",
+        "id": 8, "title": "자연과 함께하는 미래",
+        "field": "농림·수산", "emoji": "🌱", "color": "#dff0c2",
+        "author": "진로책방 자료팀", "level": "입문",
+        "jobs": "농업연구원, 산림전문가, 수산생명과학자",
+        "description": "식량과 숲, 바다를 지키고 지속 가능한 환경을 만드는 직업을 알아봅니다.",
+        "question": "자연을 지키면서 생활에 필요한 것을 얻으려면 어떻게 해야 할까?",
     },
     {
-        "id": 7,
-        "title": "법과 정의를 만드는 사람들",
-        "author": "진로책방 자료팀",
-        "field": "사회·법률",
-        "level": "보통",
-        "jobs": ["변호사", "판사", "검사"],
-        "description": "법률 분야의 주요 직업과 사회에서 법이 수행하는 역할을 알아봅니다.",
-        "reason": "사회 문제와 토론, 공정한 규칙에 관심이 있는 학생에게 어울립니다.",
-        "question": "모두에게 공정한 규칙을 만들려면 무엇을 고려해야 할까?",
-        "keywords": "법원 정의 권리 사회",
+        "id": 9, "title": "이야기를 전하는 미디어",
+        "field": "언론·미디어", "emoji": "🎥", "color": "#cbdcff",
+        "author": "진로책방 자료팀", "level": "입문",
+        "jobs": "기자, PD, 영상편집자",
+        "description": "뉴스와 영상 콘텐츠를 기획하고 사람들에게 정보를 전달하는 직업을 소개합니다.",
+        "question": "믿을 수 있는 정보를 전하려면 무엇이 중요할까?",
     },
     {
-        "id": 8,
-        "title": "기후를 연구하는 과학자",
-        "author": "진로책방 자료팀",
-        "field": "환경·생태",
-        "level": "보통",
-        "jobs": ["환경연구원", "기상예보관", "생태학자"],
-        "description": "기후와 생태계를 연구하고 환경 문제 해결에 참여하는 직업을 소개합니다.",
-        "reason": "자연과 환경 보호, 기후 변화에 관심이 있는 학생에게 추천합니다.",
-        "question": "환경 문제를 해결하기 위해 내가 실천할 수 있는 일은 무엇일까?",
-        "keywords": "기후 지구 자연 동물",
-    },
-    {
-        "id": 9,
-        "title": "뉴스를 만드는 사람들",
-        "author": "진로책방 자료팀",
-        "field": "미디어·콘텐츠",
-        "level": "입문",
-        "jobs": ["기자", "PD", "영상편집자"],
-        "description": "뉴스와 영상 콘텐츠가 기획되고 제작되는 과정을 알아봅니다.",
-        "reason": "글쓰기와 영상 제작, 사람들에게 정보를 전달하는 일에 관심이 있다면 추천합니다.",
-        "question": "믿을 수 있는 정보를 전달하려면 무엇이 중요할까?",
-        "keywords": "방송 영상 기사 유튜브",
-    },
-    {
-        "id": 10,
-        "title": "패션과 나만의 디자인",
-        "author": "진로책방 자료팀",
-        "field": "예술·디자인",
-        "level": "입문",
-        "jobs": ["패션디자이너", "스타일리스트", "제품디자이너"],
-        "description": "아이디어가 디자인으로 발전하는 과정과 창의적인 표현 방법을 소개합니다.",
-        "reason": "옷과 색상, 새로운 아이디어를 표현하는 활동을 좋아하는 학생에게 적합합니다.",
-        "question": "내 디자인에 나만의 개성을 담으려면 어떻게 해야 할까?",
-        "keywords": "패션 옷 그림 창작",
-    },
-    {
-        "id": 11,
-        "title": "동물을 돌보는 직업",
-        "author": "진로책방 자료팀",
-        "field": "동물·생명",
-        "level": "입문",
-        "jobs": ["수의사", "동물훈련사", "동물보호전문가"],
-        "description": "동물의 건강과 행동을 이해하고 동물을 돌보는 다양한 직업을 알아봅니다.",
-        "reason": "동물과 생명 존중, 동물 복지에 관심이 있는 학생에게 추천합니다.",
-        "question": "동물을 책임감 있게 돌본다는 것은 어떤 의미일까?",
-        "keywords": "반려동물 수의 동물원 생명",
-    },
-    {
-        "id": 12,
-        "title": "우주를 탐험하는 공학자",
-        "author": "진로책방 자료팀",
-        "field": "과학·공학",
-        "level": "도전",
-        "jobs": ["항공우주공학자", "천문학자", "위성개발자"],
-        "description": "우주 탐사에 필요한 과학 기술과 항공우주 분야의 직업을 살펴봅니다.",
-        "reason": "우주와 천체, 복잡한 문제를 해결하는 과정에 흥미가 있는 학생에게 어울립니다.",
-        "question": "우주 탐사가 인류에게 어떤 도움을 줄 수 있을까?",
-        "keywords": "우주 별 로켓 행성",
-    },
-    {
-        "id": 13,
-        "title": "사람의 마음을 이해하는 심리학",
-        "author": "진로책방 자료팀",
-        "field": "심리·상담",
-        "level": "보통",
-        "jobs": ["심리학자", "상담사", "임상심리전문가"],
-        "description": "사람의 생각과 행동을 연구하는 심리학과 상담 관련 직업을 소개합니다.",
-        "reason": "사람의 마음과 행동, 의사소통에 관심이 있는 학생에게 추천합니다.",
-        "question": "다른 사람의 이야기를 잘 듣는다는 것은 무엇일까?",
-        "keywords": "마음 감정 상담 행동",
-    },
-    {
-        "id": 14,
-        "title": "호텔과 여행을 기획하는 사람들",
-        "author": "진로책방 자료팀",
-        "field": "관광·서비스",
-        "level": "입문",
-        "jobs": ["호텔리어", "여행기획자", "관광통역안내사"],
-        "description": "여행과 관광 서비스를 기획하고 다양한 사람을 만나는 직업을 알아봅니다.",
-        "reason": "여행과 외국어, 사람을 응대하는 일에 관심이 있는 학생에게 적합합니다.",
-        "question": "여행객에게 좋은 경험을 제공하려면 무엇이 필요할까?",
-        "keywords": "여행 호텔 외국어 관광",
-    },
-    {
-        "id": 15,
-        "title": "스포츠와 건강을 연구하는 사람들",
-        "author": "진로책방 자료팀",
-        "field": "스포츠·건강",
-        "level": "보통",
-        "jobs": ["스포츠지도사", "운동처방사", "스포츠분석가"],
-        "description": "스포츠 활동과 건강 관리, 경기 분석과 관련된 직업을 살펴봅니다.",
-        "reason": "스포츠와 건강, 팀 활동에 관심이 있는 학생에게 추천합니다.",
-        "question": "스포츠 분야에서 협동과 공정성이 중요한 이유는 무엇일까?",
-        "keywords": "운동 경기 건강 체육",
+        "id": 10, "title": "디지털 세상을 만드는 사람들",
+        "field": "IT·디지털", "emoji": "💡", "color": "#e2d7fa",
+        "author": "진로책방 자료팀", "level": "보통",
+        "jobs": "프로그래머, AI 개발자, 데이터 분석가",
+        "description": "컴퓨터와 인공지능 기술로 문제를 해결하는 디지털 분야의 직업을 알아봅니다.",
+        "question": "기술을 이용해 우리 생활의 어떤 문제를 해결하고 싶을까?",
     },
 ]
 
-FIELDS = ["전체", *sorted({book["field"] for book in BOOKS})]
-LEVELS = ["전체", "입문", "보통", "도전"]
-
-
-# -----------------------------
-# 2. 세션 상태 초기화
-# -----------------------------
+# -------------------------
+# 세션 상태
+# -------------------------
+if "page" not in st.session_state:
+    st.session_state.page = "홈"
 if "favorites" not in st.session_state:
     st.session_state.favorites = []
+if "selected" not in st.session_state:
+    st.session_state.selected = None
+if "category" not in st.session_state:
+    st.session_state.category = "전체"
 
-if "selected_book" not in st.session_state:
-    st.session_state.selected_book = None
+# -------------------------
+# 디자인 CSS
+# -------------------------
+st.markdown("""
+<style>
+.stApp {
+    background: #f1f6ff;
+    color: #202d50;
+}
+.block-container {
+    max-width: 1050px;
+    padding-top: 1.2rem;
+    padding-bottom: 2rem;
+}
+.hero {
+    background: linear-gradient(125deg, #c8e6ff 0%, #e9f3ff 60%, #d9efff 100%);
+    border: 1px solid #b9ddfb;
+    border-radius: 24px;
+    padding: 28px 26px;
+    margin-bottom: 18px;
+}
+.hero-icon {
+    font-size: 48px;
+}
+.hero h1 {
+    color: #1e2e5b;
+    font-size: 30px;
+    margin: 4px 0 8px 0;
+}
+.hero p {
+    color: #526483;
+    font-size: 15px;
+    line-height: 1.7;
+}
+.section-title {
+    font-size: 21px;
+    font-weight: 800;
+    color: #25345d;
+    margin: 24px 0 14px 0;
+}
+div[data-testid="stTextInput"] input {
+    border-radius: 28px;
+    min-height: 48px;
+    border: 1px solid #dce5f4;
+    background: #ffffff;
+}
+div.stButton > button {
+    border-radius: 13px;
+    border: 1px solid #e0e8f5;
+    min-height: 40px;
+    transition: 0.15s;
+}
+div.stButton > button:hover {
+    border-color: #8aa9ef;
+    color: #3559bd;
+}
+.category-card {
+    border-radius: 22px;
+    padding: 15px 5px;
+    text-align: center;
+    min-height: 104px;
+    border: 1px solid rgba(255,255,255,0.85);
+}
+.category-icon {
+    font-size: 31px;
+    margin-bottom: 7px;
+}
+.category-name {
+    font-size: 14px;
+    font-weight: 700;
+    color: #2e3d60;
+}
+.book-card {
+    background: #ffffff;
+    border: 1px solid #e2eaf6;
+    border-radius: 18px;
+    padding: 12px;
+    height: 100%;
+}
+.book-cover {
+    border-radius: 9px;
+    min-height: 165px;
+    padding: 16px 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    color: #2b456a;
+    box-shadow: 2px 4px 9px #dbe3ed;
+}
+.book-cover-icon {
+    font-size: 38px;
+    margin-bottom: 10px;
+}
+.book-cover-title {
+    font-size: 15px;
+    font-weight: 800;
+    line-height: 1.55;
+}
+.book-title {
+    font-size: 15px;
+    font-weight: 750;
+    line-height: 1.55;
+    margin-top: 11px;
+    min-height: 46px;
+    color: #263454;
+}
+.field-pill {
+    display: inline-block;
+    background: #eaf1ff;
+    color: #5777ba;
+    border-radius: 30px;
+    padding: 5px 10px;
+    font-size: 12px;
+    margin-top: 5px;
+}
+.detail-box {
+    background: white;
+    border: 1px solid #e1eafa;
+    border-radius: 18px;
+    padding: 22px;
+}
+div[data-testid="stBottom"] {
+    background: #ffffff;
+}
+@media (max-width: 600px) {
+    .hero { padding: 20px 16px; }
+    .hero h1 { font-size: 25px; }
+    .category-card { min-height: 88px; }
+    .category-icon { font-size: 25px; }
+    .category-name { font-size: 12px; }
+}
+</style>
+""", unsafe_allow_html=True)
 
 
-# -----------------------------
-# 3. 화면 디자인
-# -----------------------------
-st.markdown(
-    """
-    <style>
-    .stApp {
-        background-color: #f7f8fc;
-    }
-    .hero {
-        background: linear-gradient(120deg, #e5edff, #f3eaff);
-        padding: 28px;
-        border-radius: 18px;
-        margin-bottom: 18px;
-    }
-    .hero h1 {
-        color: #24365b;
-        margin-bottom: 8px;
-    }
-    .hero p {
-        color: #475569;
-        font-size: 16px;
-    }
-    .book-card {
-        background: white;
-        padding: 18px;
-        border: 1px solid #e6eaf2;
-        border-radius: 14px;
-        min-height: 220px;
-        margin-bottom: 8px;
-    }
-    .book-category {
-        color: #5267a8;
-        font-size: 13px;
-        font-weight: 700;
-    }
-    .book-title {
-        font-size: 19px;
-        font-weight: 700;
-        color: #24365b;
-        margin: 8px 0;
-    }
-    .book-description {
-        color: #596579;
-        font-size: 14px;
-        line-height: 1.6;
-    }
-    </style>
-    """,
-    unsafe_allow_html=True,
-)
-
-with st.sidebar:
-    st.markdown("# 📚 진로책방")
-    st.caption("책에서 시작하는 나의 미래 탐색")
-    page = st.radio(
-        "메뉴",
-        ["책 둘러보기", "분야별 탐색", "관심 도서", "진로 탐색 노트"],
-    )
-    st.divider()
-    st.markdown("**이용 안내**")
-    st.caption("분야를 선택하고 책을 살펴보세요.")
-    st.caption("마음에 드는 책은 ☆ 버튼으로 저장할 수 있어요.")
-    st.caption("현재 자료는 앱 시연용 예시입니다.")
+def go(page):
+    st.session_state.page = page
+    st.session_state.selected = None
 
 
-st.markdown(
-    """
-    <div class="hero">
-        <h1>📖 진로책방</h1>
-        <p>어떤 일을 하며 살아가고 싶나요?<br>
-        다양한 분야의 책을 살펴보며 나에게 맞는 진로를 찾아보세요.</p>
-    </div>
-    """,
-    unsafe_allow_html=True,
-)
-
-# -----------------------------
-# 4. 책 상세 정보 표시 함수
-# -----------------------------
-def show_book_detail(book):
-    st.subheader("📘 책 자세히 보기")
-    st.markdown(f"### {book['title']}")
-    st.write(f"**분야:** {book['field']}  ·  **읽기 수준:** {book['level']}")
-    st.write(f"**저자/제작:** {book['author']}")
-    st.write(book["description"])
-    st.write("**관련 직업**")
-    st.write(" · ".join(book["jobs"]))
-    st.info(f"💡 추천 이유: {book['reason']}")
-    st.write("**읽고 생각해 볼 질문**")
-    st.write(book["question"])
-
-    is_favorite = book["id"] in st.session_state.favorites
-    label = "★ 관심 도서 해제" if is_favorite else "☆ 관심 도서에 저장"
-
-    if st.button(label, key=f"detail_fav_{book['id']}"):
-        if is_favorite:
-            st.session_state.favorites.remove(book["id"])
-            st.success("관심 도서에서 제외했어요.")
-        else:
-            st.session_state.favorites.append(book["id"])
-            st.success("관심 도서에 저장했어요.")
-        st.rerun()
+def toggle_favorite(book_id):
+    if book_id in st.session_state.favorites:
+        st.session_state.favorites.remove(book_id)
+    else:
+        st.session_state.favorites.append(book_id)
 
 
-# -----------------------------
-# 5. 책 목록 표시 함수
-# -----------------------------
-def show_book_grid(books):
+def show_books(books, key_prefix="book"):
     if not books:
-        st.warning("조건에 맞는 책이 없어요. 검색어나 필터를 바꿔 보세요.")
+        st.info("조건에 맞는 책이 없어요. 다른 검색어나 분야를 선택해 보세요.")
         return
 
-    st.caption(f"검색 결과 {len(books)}권")
-
-    for start in range(0, len(books), 3):
-        cols = st.columns(3)
-        for col, book in zip(cols, books[start:start + 3]):
+    for start in range(0, len(books), 4):
+        cols = st.columns(4)
+        for col, book in zip(cols, books[start:start + 4]):
             with col:
                 st.markdown(
                     f"""
                     <div class="book-card">
-                        <div class="book-category">
-                            {book['field']} · {book['level']}
+                        <div class="book-cover"
+                             style="background:{book['color']}">
+                            <div class="book-cover-icon">{book['emoji']}</div>
+                            <div class="book-cover-title">{book['title']}</div>
                         </div>
-                        <div class="book-title">
-                            📗 {book['title']}
-                        </div>
-                        <div class="book-description">
-                            {book['description']}
-                        </div>
-                        <p><b>관련 직업</b><br>
-                        {', '.join(book['jobs'])}</p>
+                        <div class="book-title">{book['title']}</div>
+                        <div class="field-pill">{book['field']}</div>
                     </div>
                     """,
                     unsafe_allow_html=True,
                 )
 
-                left, right = st.columns([3, 2])
-                with left:
-                    if st.button(
-                        "상세 보기",
-                        key=f"detail_{book['id']}_{page}",
-                        use_container_width=True,
-                    ):
-                        st.session_state.selected_book = book["id"]
-                        st.rerun()
+                if st.button(
+                    "책 정보 보기",
+                    key=f"{key_prefix}_detail_{book['id']}",
+                    use_container_width=True,
+                ):
+                    st.session_state.selected = book["id"]
+                    st.rerun()
 
-                with right:
-                    favorite = book["id"] in st.session_state.favorites
-                    button_label = "★ 저장됨" if favorite else "☆ 저장"
-                    if st.button(
-                        button_label,
-                        key=f"fav_{book['id']}_{page}",
-                        use_container_width=True,
-                    ):
-                        if favorite:
-                            st.session_state.favorites.remove(book["id"])
-                        else:
-                            st.session_state.favorites.append(book["id"])
-                        st.rerun()
+                is_saved = book["id"] in st.session_state.favorites
+                label = "★ 내 서재에 저장" if not is_saved else "✓ 저장됨"
+                if st.button(
+                    label,
+                    key=f"{key_prefix}_save_{book['id']}",
+                    use_container_width=True,
+                ):
+                    toggle_favorite(book["id"])
+                    st.rerun()
 
 
-# -----------------------------
-# 6. 메뉴별 화면
-# -----------------------------
-if page == "책 둘러보기":
-    st.subheader("🔎 나에게 맞는 진로책 찾기")
-    st.write("관심 있는 분야와 직업을 검색해 보세요.")
+def show_detail():
+    selected_id = st.session_state.selected
+    book = next((b for b in BOOKS if b["id"] == selected_id), None)
+    if book is None:
+        return
 
+    st.markdown("---")
+    st.markdown('<div class="section-title">📘 책 자세히 알아보기</div>',
+                unsafe_allow_html=True)
+    st.markdown('<div class="detail-box">', unsafe_allow_html=True)
+    st.markdown(f"### {book['emoji']} {book['title']}")
+    st.write(f"**분야:** {book['field']}　|　**읽기 수준:** {book['level']}")
+    st.write(f"**저자/제작:** {book['author']}")
+    st.write(book["description"])
+    st.write(f"**관련 직업:** {book['jobs']}")
+    st.info(f"💭 생각해 볼 질문: {book['question']}")
+    st.caption("이 책은 앱 시연을 위한 가상 자료이며 실제 출판 도서가 아닙니다.")
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    saved = book["id"] in st.session_state.favorites
+    if st.button("★ 관심 도서 해제" if saved else "☆ 내 서재에 저장",
+                 key="detail_save"):
+        toggle_favorite(book["id"])
+        st.rerun()
+    if st.button("상세 정보 닫기", key="close_detail"):
+        st.session_state.selected = None
+        st.rerun()
+
+
+# -------------------------
+# 상단 배너
+# -------------------------
+st.markdown("""
+<div class="hero">
+    <div class="hero-icon">📘 🌱</div>
+    <h1>꿈을 찾는 책장</h1>
+    <p>다양한 진로 정보책을 통해<br>
+    나의 미래를 더 가까이!</p>
+    <b>💬 네 꿈은 어떤 모습인가요?</b>
+</div>
+""", unsafe_allow_html=True)
+
+# -------------------------
+# 홈 화면
+# -------------------------
+page = st.session_state.page
+
+if page == "홈":
     query = st.text_input(
-        "책 제목, 직업, 키워드 검색",
-        placeholder="예: 의사, 인공지능, 디자인, 환경",
+        "🔎",
+        placeholder="관심 있는 분야를 검색해보세요",
+        label_visibility="collapsed",
+        key="home_search",
     )
-    col1, col2 = st.columns(2)
-    with col1:
-        field_filter = st.selectbox("관심 분야", FIELDS, key="main_field")
-    with col2:
-        level_filter = st.selectbox("읽기 수준", LEVELS, key="main_level")
+    if query.strip():
+        results = [
+            b for b in BOOKS
+            if query.lower() in (
+                b["title"] + b["field"] + b["jobs"] + b["description"]
+            ).lower()
+        ]
+        st.markdown('<div class="section-title">🔍 검색 결과</div>',
+                    unsafe_allow_html=True)
+        show_books(results, "home_search")
+    else:
+        st.markdown('<div class="section-title">▦ 분야별 찾아보기</div>',
+                    unsafe_allow_html=True)
 
-    filtered = []
-    for book in BOOKS:
-        searchable = " ".join([
-            book["title"],
-            book["author"],
-            book["field"],
-            book["description"],
-            book["reason"],
-            book["keywords"],
-            " ".join(book["jobs"]),
-        ]).lower()
+        for start in range(0, len(CATEGORIES), 5):
+            cols = st.columns(5)
+            for col, (name, emoji, color) in zip(
+                cols, CATEGORIES[start:start + 5]
+            ):
+                with col:
+                    st.markdown(
+                        f"""
+                        <div class="category-card" style="background:{color}">
+                            <div class="category-icon">{emoji}</div>
+                            <div class="category-name">{name}</div>
+                        </div>
+                        """,
+                        unsafe_allow_html=True,
+                    )
+                    if st.button("둘러보기", key=f"home_cat_{name}",
+                                 use_container_width=True):
+                        st.session_state.category = name
+                        go("분야별 검색")
+                        st.rerun()
 
-        if query.strip().lower() not in searchable and query.strip():
-            continue
-        if field_filter != "전체" and book["field"] != field_filter:
-            continue
-        if level_filter != "전체" and book["level"] != level_filter:
-            continue
-        filtered.append(book)
+        st.markdown(
+            '<div class="section-title">📚 추천 진로 정보책 '
+            '<span style="float:right;font-size:14px;color:#7b8aa9">'
+            '추천 자료</span></div>',
+            unsafe_allow_html=True,
+        )
+        show_books(BOOKS[:4], "home_recommend")
 
-    show_book_grid(filtered)
+        if st.button("추천 자료 더 보기  ›", use_container_width=True):
+            go("분야별 검색")
+            st.rerun()
 
-elif page == "분야별 탐색":
-    st.subheader("🧭 분야별 책장")
-    st.write("관심 있는 분야를 골라 관련 직업과 진로 자료를 탐색하세요.")
+elif page == "분야별 검색":
+    st.markdown('<div class="section-title">🔎 분야별 진로책 검색</div>',
+                unsafe_allow_html=True)
+    options = ["전체"] + [c[0] for c in CATEGORIES]
+    current = st.session_state.category
+    index = options.index(current) if current in options else 0
 
-    field = st.selectbox(
-        "탐색할 분야를 선택하세요",
-        sorted({book["field"] for book in BOOKS}),
-        key="category_field",
-    )
-    field_books = [book for book in BOOKS if book["field"] == field]
+    chosen = st.selectbox("관심 분야", options, index=index)
+    st.session_state.category = chosen
+    query = st.text_input("책 제목 또는 관련 직업 검색", key="field_search")
+    level = st.selectbox("읽기 수준", ["전체", "입문", "보통", "도전"])
 
-    st.markdown(f"### 🗂️ {field}")
-    st.write(f"이 분야의 진로 탐색 자료는 {len(field_books)}권입니다.")
-    jobs = sorted({job for book in field_books for job in book["jobs"]})
-    st.markdown("**살펴볼 수 있는 직업**")
-    st.write(" · ".join(jobs))
-    show_book_grid(field_books)
+    results = BOOKS[:]
+    if chosen != "전체":
+        results = [b for b in results if b["field"] == chosen]
+    if query.strip():
+        results = [
+            b for b in results
+            if query.lower() in (
+                b["title"] + b["field"] + b["jobs"] + b["description"]
+            ).lower()
+        ]
+    if level != "전체":
+        results = [b for b in results if b["level"] == level]
 
-elif page == "관심 도서":
-    st.subheader("⭐ 나의 관심 도서")
-    st.write("저장한 책을 모아 보고 다시 살펴보세요.")
+    st.caption(f"찾은 자료: {len(results)}개")
+    show_books(results, "field_results")
 
-    favorite_books = [
-        book for book in BOOKS
-        if book["id"] in st.session_state.favorites
+elif page == "내 서재":
+    st.markdown('<div class="section-title">🔖 나의 서재</div>',
+                unsafe_allow_html=True)
+    saved_books = [
+        b for b in BOOKS if b["id"] in st.session_state.favorites
     ]
-    show_book_grid(favorite_books)
-
-    if favorite_books:
-        if st.button("관심 도서 전체 해제"):
+    if saved_books:
+        show_books(saved_books, "saved")
+        if st.button("저장한 책 모두 해제"):
             st.session_state.favorites = []
-            st.session_state.selected_book = None
             st.rerun()
     else:
-        st.info("아직 저장한 책이 없어요. 책 둘러보기에서 ☆ 저장을 눌러 보세요.")
+        st.info("아직 저장한 책이 없어요. 마음에 드는 책을 서재에 담아 보세요.")
+        if st.button("진로책 둘러보기"):
+            go("분야별 검색")
+            st.rerun()
 
-elif page == "진로 탐색 노트":
-    st.subheader("📝 나의 진로 탐색 노트")
-    st.write("책을 읽고 알게 된 점과 앞으로 알아보고 싶은 내용을 기록해 보세요.")
+elif page == "마이페이지":
+    st.markdown('<div class="section-title">👤 마이페이지</div>',
+                unsafe_allow_html=True)
+    st.markdown("### 나의 진로 탐색")
+    st.write("관심 있는 분야와 미래의 꿈을 기록해 보세요.")
 
-    with st.form("career_note_form"):
-        name = st.text_input("기록 제목", placeholder="예: 내가 관심 있는 직업")
-        interest = st.text_input("관심 있는 직업 또는 분야")
-        learned = st.text_area(
-            "새롭게 알게 된 점",
-            placeholder="책에서 알게 된 직업의 특징이나 필요한 능력을 적어 보세요.",
+    with st.form("profile_form"):
+        nickname = st.text_input("별명", placeholder="예: 미래 탐험가")
+        dream = st.text_input("관심 직업", placeholder="예: 과학자")
+        favorite_field = st.selectbox(
+            "가장 관심 있는 분야",
+            [c[0] for c in CATEGORIES],
         )
-        next_step = st.text_area(
-            "앞으로 해 보고 싶은 활동",
-            placeholder="관련 책 더 읽기, 직업 인터뷰 찾아보기 등",
-        )
-        submitted = st.form_submit_button("탐색 노트 확인")
+        submitted = st.form_submit_button("내용 확인")
 
     if submitted:
-        if not name.strip() and not interest.strip() and not learned.strip() and not next_step.strip():
-            st.warning("한 가지 이상 작성해 주세요.")
-        else:
-            st.markdown("### 작성한 탐색 노트")
-            st.markdown(f"**기록 제목:** {name or '제목 없음'}")
-            st.markdown(f"**관심 직업/분야:** {interest or '미입력'}")
-            st.markdown(f"**새롭게 알게 된 점:** {learned or '미입력'}")
-            st.markdown(f"**앞으로 해 보고 싶은 활동:** {next_step or '미입력'}")
-            st.caption("이 노트는 화면에 표시되는 임시 기록이며, 앱을 새로 열면 저장되지 않습니다.")
+        st.success("나의 진로 탐색 정보")
+        st.write(f"**별명:** {nickname or '미입력'}")
+        st.write(f"**관심 직업:** {dream or '아직 탐색 중'}")
+        st.write(f"**관심 분야:** {favorite_field}")
+        st.caption("개인 정보는 영구 저장되지 않으며 현재 화면에서만 확인할 수 있습니다.")
 
-# -----------------------------
-# 7. 선택한 책의 상세 정보
-# -----------------------------
-if st.session_state.selected_book is not None:
-    selected = next(
-        (book for book in BOOKS
-         if book["id"] == st.session_state.selected_book),
-        None,
-    )
-    if selected is None:
-        st.session_state.selected_book = None
-    else:
-        st.divider()
-        show_book_detail(selected)
-        if st.button("상세 보기 닫기"):
-            st.session_state.selected_book = None
-            st.rerun()
+    st.markdown("---")
+    st.metric("내 서재에 담은 책", len(st.session_state.favorites))
+    st.metric("탐색할 수 있는 분야", len(CATEGORIES))
 
-# -----------------------------
-# 8. 하단 안내
-# -----------------------------
-st.divider()
-st.caption(
-    "진로책방 · 진로 탐색을 위한 교육용 시연 앱 | "
-    "도서 데이터는 예시이며 실제 도서 정보와 다를 수 있습니다."
+# 선택한 책의 상세 정보
+show_detail()
+
+# -------------------------
+# 하단 메뉴
+# -------------------------
+st.markdown("---")
+st.markdown(
+    "<p style='text-align:center;color:#8190ad;font-size:12px'>"
+    "꿈을 찾는 책장 · 나의 미래를 탐색하는 작은 시작</p>",
+    unsafe_allow_html=True,
 )
+
+nav_cols = st.columns(4)
+navigation = [
+    ("🏠", "홈"),
+    ("🔎", "분야별 검색"),
+    ("🔖", "내 서재"),
+    ("👤", "마이페이지"),
+]
+
+for col, (emoji, label) in zip(nav_cols, navigation):
+    with col:
+        active = st.session_state.page == label
+        button_label = f"{emoji}\n{label}"
+        if st.button(
+            button_label,
+            key=f"nav_{label}",
+            use_container_width=True,
+            type="primary" if active else "secondary",
+        ):
+            go(label)
+            st.rerun()
