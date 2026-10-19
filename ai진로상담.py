@@ -14,7 +14,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# 이미지 디자인 느낌을 살린 Custom CSS
+# Custom CSS
 st.markdown("""
 <style>
     /* 전체 배경 및 폰트 느낌 설정 */
@@ -181,11 +181,10 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ==========================================
-# 6. 디자인 반영: 6가지 파스텔 카드 메뉴
+# 6. 6가지 파스텔 카드 메뉴
 # ==========================================
 st.markdown("#### ✨ 지금 무엇을 도와드릴까요?")
 
-# Quick prompt 버튼 입력을 다루기 위한 처리
 if "current_prompt" not in st.session_state:
     st.session_state.current_prompt = ""
 
@@ -251,8 +250,9 @@ if prompt_to_send:
         """
 
         try:
+            # gemini-3.5-flash-lite 최신 모델로 변경
             response = client.models.generate_content(
-                model='gemini-2.5-flash-lite',
+                model='gemini-3.5-flash-lite',
                 contents=f"{system_instruction}\n\n사용자 질문: {prompt_to_send}",
                 config=types.GenerateContentConfig(
                     temperature=0.7,
