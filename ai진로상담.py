@@ -5,37 +5,84 @@ from google.genai import types
 from google.genai.errors import APIError
 
 # ==========================================
-# 1. 페이지 및 스티일 기본 설정
+# 1. 페이지 설정 및 디자인 스타일 (CSS)
 # ==========================================
 st.set_page_config(
-    page_title="AI 진로 멘토링 서비스",
-    page_icon="🎓",
+    page_title="AI 진로 상담 - 너의 고민, AI와 함께",
+    page_icon="🤖",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS for UI improvement
+# 이미지 디자인 느낌을 살린 Custom CSS
 st.markdown("""
 <style>
-    .main-header {
-        font-size: 2.2rem;
-        font-weight: 700;
-        color: #1E3A8A;
-        margin-bottom: 0.5rem;
+    /* 전체 배경 및 폰트 느낌 설정 */
+    .stApp {
+        background-color: #F8FAFC;
     }
-    .sub-header {
-        font-size: 1.05rem;
-        color: #4B5563;
-        margin-bottom: 1.5rem;
+    
+    /* 사이드바 스타일링 */
+    [data-testid="stSidebar"] {
+        background-color: #EEF2FF;
+        border-right: 1px solid #E2E8F0;
     }
-    .stTabs [data-baseweb="tab-list"] {
+    
+    /* 메인 타이틀 */
+    .app-header {
+        display: flex;
+        align-items: center;
         gap: 12px;
+        font-size: 1.8rem;
+        font-weight: 700;
+        color: #1E293B;
+        padding-bottom: 5px;
     }
-    .stTabs [data-baseweb="tab"] {
-        height: 48px;
-        border-radius: 8px 8px 0px 0px;
-        padding-left: 16px;
-        padding-right: 16px;
+    .app-subtitle {
+        font-size: 0.95rem;
+        color: #64748B;
+        margin-bottom: 20px;
+    }
+
+    /* AI 인사말 박스 스타일링 */
+    .ai-welcome-box {
+        background-color: #EFF6FF;
+        border: 1px solid #DBEAFE;
+        border-radius: 16px;
+        padding: 20px;
+        margin-bottom: 25px;
+        color: #1E3A8A;
+        font-size: 1.05rem;
+        line-height: 1.6;
+    }
+
+    /* 메인 바로가기 카드 버튼 스타일 */
+    .stButton > button {
+        width: 100%;
+        height: 100px;
+        border-radius: 16px;
+        border: 1px solid #E2E8F0;
+        font-weight: 600;
+        font-size: 1.05rem;
+        transition: all 0.2s ease-in-out;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+    }
+    .stButton > button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 12px rgba(0,0,0,0.08);
+        border-color: #93C5FD;
+    }
+
+    /* 사이드바 하단 감성 문구 */
+    .sidebar-footer {
+        margin-top: 40px;
+        padding: 15px;
+        background-color: #E0E7FF;
+        border-radius: 12px;
+        color: #3730A3;
+        font-size: 0.9rem;
+        line-height: 1.5;
+        font-style: italic;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -46,10 +93,8 @@ st.markdown("""
 @st.cache_resource
 def get_genai_client():
     api_key = None
-    # 1) Streamlit secrets 확인
     if "GEMINI_API_KEY" in st.secrets:
         api_key = st.secrets["GEMINI_API_KEY"]
-    # 2) OS 환경변수 확인
     elif "GEMINI_API_KEY" in os.environ:
         api_key = os.environ["GEMINI_API_KEY"]
 
@@ -57,206 +102,168 @@ def get_genai_client():
         return None
     
     try:
-        client = genai.Client(api_key=api_key)
-        return client
+        return genai.Client(api_key=api_key)
     except Exception as e:
-        st.error(f"GenAI 클라이언트 생성 중 오류가 발생했습니다: {e}")
+        st.error(f"GenAI 클라이언트 생성 오류: {e}")
         return None
 
 client = get_genai_client()
 
 # ==========================================
-# 3. 사이드바: 사용자 진로 프로필 입력
+# 3. 사이드바 (프로필 및 메뉴 설정)
 # ==========================================
 with st.sidebar:
-    st.image("https://img.icons8.com/illustrations/100/graduation-cap.png", width=80)
-    st.title("👤 내 진로 프로필")
-    st.caption("프로필을 입력하면 AI가 더 정교한 상담을 제공합니다.")
+    st.markdown("### 🤖 AI 진로 상담")
+    st.caption("너의 고민, AI와 함께")
+    st.markdown("---")
 
+    # 세션 상태 초기화 버튼 (새로운 상담)
+    if st.button("💬 새로운 상담 시작하기", use_container_width=True):
+        st.session_state.messages = []
+        st.session_state.current_prompt = ""
+        st.rerun()
+
+    st.markdown("---")
+    st.markdown("#### 👤 내 프로필 설정")
     mbti = st.selectbox("성격 유형 (MBTI)", [
         "선택 안함", "INTJ", "INTP", "ENTJ", "ENTP",
         "INFJ", "INFP", "ENFJ", "ENFP",
         "ISTJ", "ISFJ", "ESTJ", "ESFJ",
         "ISTP", "ISFP", "ESTP", "ESFP"
     ])
-    
-    interests = st.text_input("주요 관심 분야 / 흥미", placeholder="예: AI, 미술, 심리학, 환경 문제")
-    strengths = st.text_input("자신있는 과목 / 강점", placeholder="예: 수학, 영어, 문제 해결력, 공감 능력")
-    target_field = st.text_input("희망 학과 / 희망 직업 (선택)", placeholder="예: 컴퓨터공학과, 마케터")
-    academic_level = st.select_slider(
-        "현재 학업/성적 만족도",
-        options=["상위권", "중상위권", "중위권", "노력 필요"],
-        value="중상위권"
-    )
+    interests = st.text_input("관심 분야 / 흥미", placeholder="예: IT, 디자인, 심리학")
+    strengths = st.text_input("강점 / 잘하는 과목", placeholder="예: 수학, 영어, 소통능력")
+    target_field = st.text_input("희망 학과 / 직업", placeholder="예: 컴퓨터공학과, PD")
 
-    st.markdown("---")
-    st.caption("💡 설정된 프로필은 AI 상담에 자동 조합됩니다.")
+    # 감성 문구
+    st.markdown("""
+    <div class="sidebar-footer">
+        🌱 <br>
+        지금의 고민이<br>
+        너의 더 멋진<br>
+        미래를 만들 거야 :)
+    </div>
+    """, unsafe_allow_html=True)
 
-# 프로필 요약 텍스트 생성
 profile_summary = f"""
-[사용자 프로필 정보]
+[사용자 프로필]
 - MBTI: {mbti}
 - 관심 분야: {interests if interests else '미입력'}
-- 강점/자신있는 과목: {strengths if strengths else '미입력'}
+- 강점: {strengths if strengths else '미입력'}
 - 희망 학과/직업: {target_field if target_field else '미입력'}
-- 학업 성적 수준: {academic_level}
 """
 
 # ==========================================
 # 4. 메인 화면 헤더 및 API 키 검증
 # ==========================================
-st.markdown("<div class='main-header'>🎓 AI 진로 & 직업 탐구 멘토</div>", unsafe_allow_html=True)
-st.markdown("<div class='sub-header'>성격, 흥미, 적성을 분석하여 최적의 학과, 직업, 탐구 활동을 추천해 드립니다.</div>", unsafe_allow_html=True)
+st.markdown('<div class="app-header">🤖 AI 진로 상담</div>', unsafe_allow_html=True)
+st.markdown('<div class="app-subtitle">너의 고민, AI와 함께 나누어 보세요.</div>', unsafe_allow_html=True)
 
 if not client:
-    st.warning("⚠️ **GEMINI_API_KEY**가 설정되지 않았습니다. Secrets 설정 또는 환경 변수를 확인해주세요.")
+    st.warning("⚠️ **GEMINI_API_KEY**가 설정되지 않았습니다. Secrets 설정을 확인해주세요.")
     st.info("""
-    **설정 방법:**
-    1. Streamlit Cloud 배포 시 **App Settings > Secrets** 항목으로 이동합니다.
-    2. 아래와 같이 API 키를 입력합니다:
-       ```toml
-       GEMINI_API_KEY = "your_gemini_api_key_here"
-       ```
+    **Secrets 설정 방법:**
+    ```toml
+    GEMINI_API_KEY = "your_gemini_api_key_here"
+    ```
     """)
     st.stop()
 
 # ==========================================
-# 5. 탭 구성 (상담실 / 리포트 / 탐구활동)
+# 5. AI 인사말 메인 안내 상자
 # ==========================================
-tab1, tab2, tab3 = st.tabs(["💬 AI 진로 상담실", "📊 맞춤형 진로/학과 리포트", "🎯 진로 탐구 활동 추천"])
+st.markdown("""
+<div class="ai-welcome-box">
+    <strong>🤖 안녕하세요! 저는 여러분의 진로를 함께 고민해주는 AI 상담사예요 😊</strong><br><br>
+    궁금한 게 있으면 언제든지 편하게 말해주세요!<br>
+    성격, 적성, 흥미, 학과, 직업 추천부터 진로 고민까지 다 들어줄게요.
+</div>
+""", unsafe_allow_html=True)
 
-# ------------------------------------------
-# TAB 1: AI 진로 대화 상담실
-# ------------------------------------------
-with tab1:
-    st.subheader("💬 진로 고민 전문 AI 멘토와의 대화")
-    st.write("진로 선택, 학과 정보, 공부법, 미래 직업 전망 등 궁금한 점을 편하게 질문하세요.")
+# ==========================================
+# 6. 디자인 반영: 6가지 파스텔 카드 메뉴
+# ==========================================
+st.markdown("#### ✨ 지금 무엇을 도와드릴까요?")
 
-    # 세션 상태 내 대화 기록 관리
-    if "messages" not in st.session_state:
-        st.session_state.messages = [
-            {"role": "assistant", "content": "안녕하세요! 당신의 진로 멘토입니다. 어떤 고민이나 질문이 있으신가요? 프로필 정보를 바탕으로 정성껏 답변해 드릴게요!"}
-        ]
+# Quick prompt 버튼 입력을 다루기 위한 처리
+if "current_prompt" not in st.session_state:
+    st.session_state.current_prompt = ""
 
-    # 기존 메시지 표시
-    for message in st.session_state.messages:
-        with st.chat_message(message["role"]):
-            st.markdown(message["content"])
+col1, col2, col3 = st.columns(3)
 
-    # 사용자 입력 처리
-    if prompt := st.chat_input("예: 인공지능 분야로 가려면 어떤 학과를 선택해야 할까요?"):
-        st.session_state.messages.append({"role": "user", "content": prompt})
-        with st.chat_message("user"):
-            st.markdown(prompt)
+with col1:
+    if st.button("👤\n나에게 맞는 학과 추천", key="btn1"):
+        st.session_state.current_prompt = "내 프로필과 성향을 분석해서 나에게 가장 잘 어울리는 학과 3가지를 추천해주고 이유를 설명해줘."
+    if st.button("📄\n진로 정보 제공", key="btn4"):
+        st.session_state.current_prompt = "최근 유망한 진로 분야 및 트렌드에 대해 자세히 알려줘."
 
-        with st.chat_message("assistant"):
-            message_placeholder = st.empty()
-            message_placeholder.markdown("🤔 *생각 중...*")
+with col2:
+    if st.button("💼\n직업 추천", key="btn2"):
+        st.session_state.current_prompt = "나의 관심사 및 강점을 바탕으로 미래 전망이 좋은 추천 직업 3가지를 제시해줘."
+    if st.button("🧩\n진로 탐구 활동 추천", key="btn5"):
+        st.session_state.current_prompt = "생활기록부나 포트폴리오에 활용하기 좋은 진로 심화 탐구 주제 및 활동 아이디어 3가지를 추천해줘."
 
-            system_instruction = f"""
-            당신은 친절하고 전문적인 진로 및 진학 상담 전문가입니다.
-            다음 사용자 프로필 정보를 바탕으로 공감하며 구체적이고 현실적인 진로 조언을 제공하세요.
-            답변은 가독성 좋게 마크다운 형식을 활용하세요.
+with col3:
+    if st.button("💬\n진로 고민 상담", key="btn3"):
+        st.session_state.current_prompt = "요즘 진로를 어떻게 정해야 할지 고민이 많아. 어떤 순서로 진로를 탐색하면 좋을까?"
+    if st.button("📚\n추천 콘텐츠 보기\n(도서/영화 등)", key="btn6"):
+        st.session_state.current_prompt = "나의 진로 탐색 및 영감에 도움이 될 만한 추천 도서나 영화/강연 3가지를 소개해줘."
 
-            {profile_summary}
-            """
+st.markdown("---")
 
-            try:
-                # API 호출
-                response = client.models.generate_content(
-                    model='gemini-2.5-flash-lite',
-                    contents=f"{system_instruction}\n\n사용자 질문: {prompt}",
-                    config=types.GenerateContentConfig(
-                        temperature=0.7,
-                        max_output_tokens=1500,
-                    )
+# ==========================================
+# 7. 대화 세션 관리 및 입력 창
+# ==========================================
+if "messages" not in st.session_state:
+    st.session_state.messages = []
+
+# 이전 메시지 출력
+for message in st.session_state.messages:
+    with st.chat_message(message["role"]):
+        st.markdown(message["content"])
+
+# 사용자 채팅 입력 또는 카드 버튼 클릭 처리
+user_input = st.chat_input("메시지를 입력하세요...")
+prompt_to_send = None
+
+if user_input:
+    prompt_to_send = user_input
+elif st.session_state.current_prompt:
+    prompt_to_send = st.session_state.current_prompt
+    st.session_state.current_prompt = ""  # 일회성 사용 후 초기화
+
+# 질문 답변 생성
+if prompt_to_send:
+    st.session_state.messages.append({"role": "user", "content": prompt_to_send})
+    with st.chat_message("user"):
+        st.markdown(prompt_to_send)
+
+    with st.chat_message("assistant"):
+        message_placeholder = st.empty()
+        message_placeholder.markdown("🤔 *답변을 작성하고 있어요...*")
+
+        system_instruction = f"""
+        당신은 따뜻하고 공감 능력이 뛰어난 진로 전문 AI 상담사입니다.
+        아래 사용자 프로필을 바탕으로 친절하고 다정하게 답변해 주세요.
+        답변은 읽기 쉽도록 마크다운 기호와 이모지를 적절히 활용하세요.
+
+        {profile_summary}
+        """
+
+        try:
+            response = client.models.generate_content(
+                model='gemini-2.5-flash-lite',
+                contents=f"{system_instruction}\n\n사용자 질문: {prompt_to_send}",
+                config=types.GenerateContentConfig(
+                    temperature=0.7,
+                    max_output_tokens=1500,
                 )
-                
-                bot_response = response.text
-                message_placeholder.markdown(bot_response)
-                st.session_state.messages.append({"role": "assistant", "content": bot_response})
+            )
+            bot_response = response.text
+            message_placeholder.markdown(bot_response)
+            st.session_state.messages.append({"role": "assistant", "content": bot_response})
 
-            except APIError as e:
-                message_placeholder.error(f"Gemini API 호출 중 오류가 발생했습니다: {e.message}")
-            except Exception as e:
-                message_placeholder.error(f"예기치 못한 오류가 발생했습니다: {str(e)}")
-
-# ------------------------------------------
-# TAB 2: 맞춤형 진로/학과 진단 리포트
-# ------------------------------------------
-with tab2:
-    st.subheader("📊 프로필 기반 맞춤형 진로 분석")
-    st.write("사이드바에 입력하신 프로필 정보를 바탕으로 AI가 적합한 학과와 직업을 종합 분석합니다.")
-
-    if st.button("🚀 맞춤 진로 분석 리포트 생성하기", use_container_width=True):
-        with st.spinner("사용자의 성격, 흥미, 적성을 종합 분석 중입니다..."):
-            prompt = f"""
-            {profile_summary}
-
-            위 사용자 프로필을 종합적으로 분석하여 아래 형식으로 상세한 진로 추천 리포트를 작성해 주세요:
-
-            ### 1. 💡 사용자 진로 성향 요약
-            - 주요 특징 및 강점 분석
-
-            ### 🎓 2. 추천 학과 Top 3
-            1. **학과명**: (추천 이유 및 관련 핵심 과목)
-            2. **학과명**: (추천 이유 및 관련 핵심 과목)
-            3. **학과명**: (추천 이유 및 관련 핵심 과목)
-
-            ### 💼 3. 추천 직업 Top 3
-            1. **직업명**: (직무 설명 및 향후 전망)
-            2. **직업명**: (직무 설명 및 향후 전망)
-            3. **직업명**: (직무 설명 및 향후 전망)
-
-            ### 🛠️ 4. 단기/장기 로드맵 제안
-            - 현재 준비할 수 있는 사항 및 준비 전략
-            """
-
-            try:
-                response = client.models.generate_content(
-                    model='gemini-2.5-flash-lite',
-                    contents=prompt,
-                    config=types.GenerateContentConfig(temperature=0.6)
-                )
-                st.markdown(response.text)
-            except APIError as e:
-                st.error(f"API 오류: {e.message}")
-            except Exception as e:
-                st.error(f"오류가 발생했습니다: {str(e)}")
-
-# ------------------------------------------
-# TAB 3: 진로 탐구 활동 추천
-# ------------------------------------------
-with tab3:
-    st.subheader("🎯 학종 & 포트폴리오를 위한 진로 탐구 활동 제안")
-    st.write("관심 분야나 학과에 맞춰 학교 생활기록부나 개인 포트폴리오에 활용할 수 있는 심화 탐구 활동을 추천받으세요.")
-
-    col1, col2 = st.columns(2)
-    with col1:
-        target_subject = st.text_input("탐구하고자 하는 주요 주제/분야", value=interests if interests else "인공지능과 윤리")
-    with col2:
-        activity_type = st.selectbox("원하는 활동 유형", ["전체", "독서 및 탐구 보고서", "동아리 프로젝트", "자율 연구 주제"])
-
-    if st.button("✨ 맞춤 탐구 활동 아이디어 받기", use_container_width=True):
-        with st.spinner("창의적이고 구체적인 탐구 활동을 구성 중입니다..."):
-            prompt = f"""
-            {profile_summary}
-
-            - 목표 탐구 주제/분야: {target_subject}
-            - 선택한 활동 유형: {activity_type}
-
-            위 정보를 기반으로 학생/취업준비생이 실행할 수 있는 실용적이고 우수한 진로 탐구 활동 3가지를 추천해 주세요.
-            각 활동마다 [활동 제목], [추천 배경/목적], [세부 실행 단계], [예상 결과물]을 포함하여 깔끔하게 마크다운으로 정리해 주세요.
-            """
-
-            try:
-                response = client.models.generate_content(
-                    model='gemini-2.5-flash-lite',
-                    contents=prompt,
-                    config=types.GenerateContentConfig(temperature=0.7)
-                )
-                st.markdown(response.text)
-            except APIError as e:
-                st.error(f"API 오류: {e.message}")
-            except Exception as e:
-                st.error(f"오류가 발생했습니다: {str(e)}")
+        except APIError as e:
+            message_placeholder.error(f"Gemini API 오류가 발생했습니다: {e.message}")
+        except Exception as e:
+            message_placeholder.error(f"오류가 발생했습니다: {str(e)}")
