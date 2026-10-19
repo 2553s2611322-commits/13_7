@@ -1,6 +1,3 @@
-import streamlit as st
-st.title('ai 진로상담')
-st.write('내용')
 import os
 import streamlit as st
 from google import genai
