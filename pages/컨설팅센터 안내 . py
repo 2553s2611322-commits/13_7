@@ -1,3 +1,0 @@
-Import streamlit as st
-st.title('컨설팅센터 안내 ')
-st.wrlte('컨설팅센터 안내')
