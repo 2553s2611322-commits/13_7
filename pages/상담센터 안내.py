@@ -1,112 +1,226 @@
-
 import streamlit as st
 import requests
 import pandas as pd
 from urllib.parse import quote
 
-# -----------------------------------
-# 기본 설정
-# -----------------------------------
 st.set_page_config(
-    page_title="진로상담센터 안내",
+    page_title="진로상담센터 찾기",
     page_icon="🧭",
-    layout="wide"
+    layout="wide",
+    initial_sidebar_state="collapsed",
 )
 
 st.markdown("""
 <style>
-    .main {
-        background-color: #f7f9fc;
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700;800&display=swap');
+
+html, body, [class*="css"] {
+    font-family: 'Noto Sans KR', sans-serif;
+}
+
+.stApp {
+    background: #f4f7fb;
+}
+
+.block-container {
+    max-width: 1100px;
+    padding-top: 1.2rem;
+    padding-bottom: 3rem;
+}
+
+.app-header {
+    background: white;
+    border: 1px solid #e8edf3;
+    border-radius: 20px;
+    padding: 18px 22px;
+    margin-bottom: 16px;
+}
+
+.brand {
+    color: #203b5c;
+    font-weight: 800;
+    font-size: 1.2rem;
+}
+
+.brand-sub {
+    color: #7b8ca1;
+    font-size: .78rem;
+    margin-top: 3px;
+}
+
+.hero {
+    background: linear-gradient(120deg, #1689e8, #42c7b5);
+    border-radius: 22px;
+    padding: 24px;
+    color: white;
+    margin-bottom: 18px;
+}
+
+.hero h1 {
+    color: white;
+    font-size: 1.65rem;
+}
+
+.hero p {
+    color: #f3ffff;
+}
+
+.section-title {
+    color: #263a52;
+    font-size: 1.15rem;
+    font-weight: 800;
+    margin: 18px 0 10px;
+}
+
+.metric {
+    background: white;
+    border: 1px solid #e5ebf2;
+    border-radius: 15px;
+    padding: 14px;
+    text-align: center;
+}
+
+.metric-number {
+    font-size: 1.3rem;
+    font-weight: 800;
+    color: #217bd0;
+}
+
+.metric-label {
+    color: #7d8da0;
+    font-size: .78rem;
+}
+
+div.stButton > button {
+    border-radius: 12px;
+    border: 0;
+    font-weight: 700;
+    min-height: 2.7rem;
+}
+
+div.stButton > button[kind="primary"] {
+    background: linear-gradient(90deg, #2785e6, #31bcae);
+    color: white;
+}
+
+div[data-testid="stExpander"] {
+    background: white;
+    border: 1px solid #e5ebf2;
+    border-radius: 12px;
+}
+
+@media (max-width: 650px) {
+    .block-container {
+        padding-left: 1rem;
+        padding-right: 1rem;
     }
+
     .hero {
-        background: linear-gradient(120deg, #dceaff, #e7f5ed);
-        padding: 28px;
-        border-radius: 20px;
-        margin-bottom: 20px;
+        padding: 19px;
     }
+
     .hero h1 {
-        color: #24476b;
-        margin-bottom: 8px;
+        font-size: 1.4rem;
     }
-    .info-card {
-        background: white;
-        padding: 18px;
-        border-radius: 14px;
-        border: 1px solid #e4eaf0;
-        margin-bottom: 12px;
-    }
+}
 </style>
 """, unsafe_allow_html=True)
 
 
-# -----------------------------------
 # 지역 정보
-# -----------------------------------
 REGIONS = {
-    "서울특별시": ["종로구", "중구", "용산구", "성동구", "광진구",
-                 "동대문구", "중랑구", "성북구", "강북구", "도봉구",
-                 "노원구", "은평구", "서대문구", "마포구", "양천구",
-                 "강서구", "구로구", "금천구", "영등포구", "동작구",
-                 "관악구", "서초구", "강남구", "송파구", "강동구"],
-    "부산광역시": ["중구", "서구", "동구", "영도구", "부산진구",
-                 "동래구", "남구", "북구", "해운대구", "사하구",
-                 "금정구", "강서구", "연제구", "수영구", "사상구",
-                 "기장군"],
-    "대구광역시": ["중구", "동구", "서구", "남구", "북구",
-                 "수성구", "달서구", "달성군", "군위군"],
-    "인천광역시": ["중구", "동구", "미추홀구", "연수구", "남동구",
-                 "부평구", "계양구", "서구", "강화군", "옹진군"],
+    "서울특별시": [
+        "종로구", "중구", "용산구", "성동구", "광진구",
+        "동대문구", "중랑구", "성북구", "강북구", "도봉구",
+        "노원구", "은평구", "서대문구", "마포구", "양천구",
+        "강서구", "구로구", "금천구", "영등포구", "동작구",
+        "관악구", "서초구", "강남구", "송파구", "강동구"
+    ],
+    "부산광역시": [
+        "중구", "서구", "동구", "영도구", "부산진구",
+        "동래구", "남구", "북구", "해운대구", "사하구",
+        "금정구", "강서구", "연제구", "수영구", "사상구", "기장군"
+    ],
+    "대구광역시": [
+        "중구", "동구", "서구", "남구", "북구",
+        "수성구", "달서구", "달성군", "군위군"
+    ],
+    "인천광역시": [
+        "중구", "동구", "미추홀구", "연수구", "남동구",
+        "부평구", "계양구", "서구", "강화군", "옹진군"
+    ],
     "광주광역시": ["동구", "서구", "남구", "북구", "광산구"],
     "대전광역시": ["동구", "중구", "서구", "유성구", "대덕구"],
     "울산광역시": ["중구", "남구", "동구", "북구", "울주군"],
     "세종특별자치시": ["세종시"],
-    "경기도": ["수원시", "성남시", "고양시", "용인시", "부천시",
-              "안산시", "안양시", "남양주시", "화성시", "평택시",
-              "의정부시", "파주시", "김포시", "광명시", "군포시",
-              "오산시", "이천시", "양주시", "구리시", "안성시",
-              "포천시", "하남시", "의왕시", "여주시", "양평군",
-              "가평군", "연천군", "동두천시", "과천시", "시흥시",
-              "광주시"],
-    "강원특별자치도": ["춘천시", "원주시", "강릉시", "동해시",
-                    "태백시", "속초시", "삼척시", "홍천군",
-                    "횡성군", "영월군", "평창군", "정선군",
-                    "철원군", "화천군", "양구군", "인제군",
-                    "고성군", "양양군"],
-    "충청북도": ["청주시", "충주시", "제천시", "보은군", "옥천군",
-               "영동군", "증평군", "진천군", "괴산군", "음성군",
-               "단양군"],
-    "충청남도": ["천안시", "공주시", "보령시", "아산시", "서산시",
-               "논산시", "계룡시", "당진시", "금산군", "부여군",
-               "서천군", "청양군", "홍성군", "예산군", "태안군"],
-    "전북특별자치도": ["전주시", "군산시", "익산시", "정읍시",
-                    "남원시", "김제시", "완주군", "진안군",
-                    "무주군", "장수군", "임실군", "순창군",
-                    "고창군", "부안군"],
-    "전라남도": ["목포시", "여수시", "순천시", "나주시", "광양시",
-               "담양군", "곡성군", "구례군", "고흥군", "보성군",
-               "화순군", "장흥군", "강진군", "해남군", "영암군",
-               "무안군", "함평군", "영광군", "장성군", "완도군",
-               "진도군", "신안군"],
-    "경상북도": ["포항시", "경주시", "김천시", "안동시", "구미시",
-               "영주시", "영천시", "상주시", "문경시", "경산시",
-               "의성군", "청송군", "영양군", "영덕군", "청도군",
-               "고령군", "성주군", "칠곡군", "예천군", "봉화군",
-               "울진군", "울릉군"],
-    "경상남도": ["창원시", "진주시", "통영시", "사천시", "김해시",
-               "밀양시", "거제시", "양산시", "의령군", "함안군",
-               "창녕군", "고성군", "남해군", "하동군", "산청군",
-               "함양군", "거창군", "합천군"],
+    "경기도": [
+        "수원시", "성남시", "고양시", "용인시", "부천시",
+        "안산시", "안양시", "남양주시", "화성시", "평택시",
+        "의정부시", "파주시", "김포시", "광명시", "군포시",
+        "오산시", "이천시", "양주시", "구리시", "안성시",
+        "포천시", "하남시", "의왕시", "여주시", "양평군",
+        "가평군", "연천군", "동두천시", "과천시", "시흥시", "광주시"
+    ],
+    "강원특별자치도": [
+        "춘천시", "원주시", "강릉시", "동해시", "태백시",
+        "속초시", "삼척시", "홍천군", "횡성군"
+    ],
+    "충청북도": [
+        "청주시", "충주시", "제천시", "보은군", "옥천군",
+        "영동군", "증평군", "진천군", "괴산군", "음성군", "단양군"
+    ],
+    "충청남도": [
+        "천안시", "공주시", "보령시", "아산시", "서산시",
+        "논산시", "계룡시", "당진시", "홍성군", "예산군"
+    ],
+    "전북특별자치도": [
+        "전주시", "군산시", "익산시", "정읍시", "남원시",
+        "김제시", "완주군", "고창군", "부안군"
+    ],
+    "전라남도": [
+        "목포시", "여수시", "순천시", "나주시", "광양시",
+        "담양군", "고흥군", "보성군", "화순군", "해남군", "무안군"
+    ],
+    "경상북도": [
+        "포항시", "경주시", "김천시", "안동시", "구미시",
+        "영주시", "영천시", "상주시", "문경시", "경산시"
+    ],
+    "경상남도": [
+        "창원시", "진주시", "통영시", "사천시",
+        "김해시", "밀양시", "거제시", "양산시"
+    ],
     "제주특별자치도": ["제주시", "서귀포시"]
 }
 
+CATEGORY_QUERIES = {
+    "진로진학지원센터": [
+        "진로진학지원센터",
+        "진로진학센터"
+    ],
+    "진로교육지원센터": [
+        "진로교육지원센터",
+        "진로교육센터"
+    ],
+    "진로체험지원센터": [
+        "진로체험지원센터",
+        "진로체험센터"
+    ],
+    "직업진로기관": [
+        "직업진로상담",
+        "직업상담센터",
+        "고용복지플러스센터"
+    ]
+}
 
-# -----------------------------------
-# 위치 정보 가져오기
-# -----------------------------------
+HEADERS = {
+    "User-Agent": "CareerCenterGuide/1.0 educational project"
+}
+
+
 def get_location():
-    """브라우저 위치 정보를 요청한다."""
     try:
         from streamlit_geolocation import streamlit_geolocation
+
         location = streamlit_geolocation()
 
         if not isinstance(location, dict):
@@ -118,19 +232,19 @@ def get_location():
         if lat is None or lon is None:
             return None
 
-        lat, lon = float(lat), float(lon)
+        lat = float(lat)
+        lon = float(lon)
 
-        if not (-90 <= lat <= 90 and -180 <= lon <= 180):
-            return None
-
-        return lat, lon
+        if -90 <= lat <= 90 and -180 <= lon <= 180:
+            return lat, lon
 
     except Exception:
         return None
 
+    return None
+
 
 def reverse_geocode(lat, lon):
-    """좌표를 대략적인 주소로 변환한다."""
     try:
         response = requests.get(
             "https://nominatim.openstreetmap.org/reverse",
@@ -140,238 +254,645 @@ def reverse_geocode(lat, lon):
                 "format": "jsonv2",
                 "accept-language": "ko"
             },
-            headers={"User-Agent": "CareerCenterGuide/1.0"},
+            headers=HEADERS,
             timeout=8
         )
+
         response.raise_for_status()
-        data = response.json()
-        address = data.get("address", {})
+        address = response.json().get("address", {})
 
         return (
             address.get("city")
+            or address.get("town")
             or address.get("county")
             or address.get("state")
             or "현재 위치"
         )
-    except (requests.RequestException, ValueError, TypeError):
+
+    except (
+        requests.RequestException,
+        ValueError,
+        TypeError
+    ):
         return "현재 위치"
 
 
-# -----------------------------------
-# 상담센터 검색
-# -----------------------------------
-def search_centers(query, lat=None, lon=None):
-    """OpenStreetMap에서 관련 장소를 검색한다."""
+def search_places(query, lat=None, lon=None, limit=8):
+    params = {
+        "q": query,
+        "format": "jsonv2",
+        "limit": limit,
+        "addressdetails": 1,
+        "accept-language": "ko"
+    }
+
+    if lat is not None and lon is not None:
+        params.update({
+            "lat": lat,
+            "lon": lon
+        })
+
     try:
-        params = {
-            "q": query,
-            "format": "jsonv2",
-            "limit": 8,
-            "addressdetails": 1,
-            "accept-language": "ko"
-        }
-
-        # 현재 위치가 있으면 해당 좌표 주변을 우선 검색
-        if lat is not None and lon is not None:
-            params.update({
-                "lat": lat,
-                "lon": lon
-            })
-
         response = requests.get(
             "https://nominatim.openstreetmap.org/search",
             params=params,
-            headers={"User-Agent": "CareerCenterGuide/1.0"},
-            timeout=10
+            headers=HEADERS,
+            timeout=12
         )
-        response.raise_for_status()
-        results = response.json()
 
-        centers = []
-        for item in results:
-            name = item.get("name") or item.get("display_name", "")
-            address = item.get("display_name", "")
+        response.raise_for_status()
+        data = response.json()
+
+        places = []
+        seen = set()
+
+        if not isinstance(data, list):
+            return []
+
+        for item in data:
+            name = (item.get("name") or "").strip()
+            address = (item.get("display_name") or "").strip()
+
             if not name:
                 continue
 
-            centers.append({
-                "센터명": name,
-                "주소": address,
-                "위도": float(item["lat"]),
-                "경도": float(item["lon"]),
-                "지도": (
+            if item.get("lat") is None or item.get("lon") is None:
+                continue
+
+            key = (name.lower(), address.lower())
+
+            if key in seen:
+                continue
+
+            seen.add(key)
+
+            try:
+                latitude = float(item["lat"])
+                longitude = float(item["lon"])
+            except (TypeError, ValueError):
+                continue
+
+            places.append({
+                "name": name,
+                "address": address or "주소 정보 없음",
+                "lat": latitude,
+                "lon": longitude,
+                "map": (
                     "https://www.openstreetmap.org/?mlat="
-                    + str(item["lat"])
+                    + str(latitude)
                     + "&mlon="
-                    + str(item["lon"])
+                    + str(longitude)
                     + "#map=16/"
-                    + str(item["lat"])
+                    + str(latitude)
                     + "/"
-                    + str(item["lon"])
+                    + str(longitude)
                 )
             })
 
-        return centers
+        return places
 
-    except (requests.RequestException, ValueError, TypeError, KeyError):
+    except (
+        requests.RequestException,
+        ValueError,
+        TypeError
+    ):
         return []
 
 
-# -----------------------------------
-# 화면 구성
-# -----------------------------------
+def search_centers(area, category, location=None):
+    if location:
+        lat, lon = location
+    else:
+        lat, lon = None, None
+
+    results = []
+    seen = set()
+
+    for keyword in CATEGORY_QUERIES[category]:
+        found = search_places(
+            f"{area} {keyword}",
+            lat,
+            lon
+        )
+
+        for place in found:
+            name = place["name"].lower()
+
+            if not any(
+                word in name
+                for word in ("진로", "진학", "직업", "고용")
+            ):
+                continue
+
+            if any(
+                word in name
+                for word in ("심리상담", "정신건강", "청소년상담복지")
+            ):
+                continue
+
+            key = (place["name"], place["address"])
+
+            if key not in seen:
+                seen.add(key)
+                results.append(place)
+
+            if len(results) >= 10:
+                return results
+
+    return results
+
+
+def map_link(area, category="진로진학센터"):
+    query = quote(f"{area} {category}")
+    return f"https://www.google.com/maps/search/{query}"
+
+
+# ---------- 상단 헤더 ----------
 st.markdown("""
-<div class="hero">
-    <h1>🧭 나의 진로 길찾기</h1>
-    <p>진로가 고민될 때, 가까운 상담센터를 찾아보세요.</p>
-    <p>내 주변의 상담 기관부터 온라인 진로상담까지 한곳에서!</p>
+<div class="app-header">
+    <div class="brand">🧭 진로상담센터 찾기</div>
+    <div class="brand-sub">나의 꿈을 향한 첫 번째 길찾기</div>
 </div>
 """, unsafe_allow_html=True)
 
-tab1, tab2, tab3 = st.tabs([
-    "📍 주변 센터 찾기",
-    "💬 온라인 진로상담",
-    "❓ 이용 안내"
+
+# ---------- 메뉴 ----------
+home_tab, booking_tab, finder_tab, my_tab, community_tab = st.tabs([
+    "🏠 홈",
+    "📅 예약",
+    "🔎 센터 찾기",
+    "👤 마이페이지",
+    "💬 커뮤니티"
 ])
 
-with tab1:
-    st.subheader("어디에 있는 상담센터를 찾나요?")
-    st.caption("현재 위치는 권한을 허용한 경우에만 확인합니다.")
 
-    if st.button("📍 현재 위치 확인하기", use_container_width=True):
-        location = get_location()
-        if location:
-            st.session_state["my_location"] = location
-            st.session_state["my_area"] = reverse_geocode(*location)
-            st.success(
-                "위치를 확인했어요: "
-                + st.session_state["my_area"]
-            )
-        else:
-            st.warning(
-                "위치를 가져오지 못했어요. 브라우저 위치 권한을 확인하거나 "
-                "아래에서 지역을 직접 선택해 주세요."
-            )
-
-    provinces = list(REGIONS.keys())
-    default_index = provinces.index("서울특별시")
-
-    province = st.selectbox(
-        "시·도 선택",
-        provinces,
-        index=default_index
-    )
-    district = st.selectbox(
-        "시·군·구 선택",
-        REGIONS[province]
-    )
-
-    search_keyword = st.selectbox(
-        "찾고 싶은 기관",
-        [
-            "진로상담센터",
-            "청소년상담복지센터",
-            "진로진학지원센터",
-            "진로체험지원센터"
-        ]
-    )
-
-    area = f"{province} {district}"
-    st.info(f"검색 지역: {area}")
-
-    if st.button("🔎 상담센터 검색하기", type="primary",
-                 use_container_width=True):
-        search_text = f"{area} {search_keyword}"
-        with st.spinner("주변 기관 정보를 검색하고 있어요..."):
-            results = search_centers(search_text)
-
-        st.session_state["search_results"] = results
-        st.session_state["search_area"] = area
-        st.session_state["search_keyword"] = search_keyword
-
-    if "search_results" in st.session_state:
-        results = st.session_state["search_results"]
-        area = st.session_state.get("search_area", area)
-        keyword = st.session_state.get("search_keyword", search_keyword)
-
-        map_query = quote(f"{area} {keyword}")
-        st.markdown(
-            f"[🗺️ 지도에서 더 많은 상담센터 찾아보기]"
-            f"(https://www.google.com/maps/search/{map_query})"
-        )
-
-        if results:
-            st.success(f"검색 결과 {len(results)}곳")
-            st.map(pd.DataFrame([
-                {"lat": c["위도"], "lon": c["경도"]}
-                for c in results
-            ]))
-
-            for center in results:
-                st.markdown('<div class="info-card">', unsafe_allow_html=True)
-                st.markdown(f"### 🏫 {center['센터명']}")
-                st.write(f"📍 주소: {center['주소']}")
-                st.markdown(f"[지도에서 위치 보기]({center['지도']})")
-                st.markdown("</div>", unsafe_allow_html=True)
-        else:
-            st.warning(
-                "등록된 장소를 찾지 못했어요. 검색어가 다르거나 "
-                "지도 데이터에 정보가 없을 수 있어요."
-            )
-            st.write(
-                "아래 지도 검색에서 지역과 기관명을 바꾸어 확인해 보세요."
-            )
-
-with tab2:
-    st.subheader("온라인으로 진로 고민 상담하기")
-    st.write(
-        "직업 선택, 학과 고민, 진학 방향 등 다양한 진로 고민을 "
-        "온라인으로 상담할 수 있어요."
-    )
-
+# ---------- 홈 ----------
+with home_tab:
     st.markdown("""
-    <div class="info-card">
-        <h3>🌱 커리어넷</h3>
-        <p>직업 정보, 진로심리검사, 진로상담 서비스를 이용할 수 있어요.</p>
-        <a href="https://www.career.go.kr/" target="_blank">
-            커리어넷 바로가기 ↗
-        </a>
-    </div>
-    <div class="info-card">
-        <h3>🌼 주니어 커리어넷</h3>
-        <p>청소년을 위한 진로 탐색과 진로상담 정보를 확인할 수 있어요.</p>
-        <a href="https://www.career.go.kr/cloud/jm/main/home" target="_blank">
-            주니어 커리어넷 바로가기 ↗
-        </a>
+    <div class="hero">
+        <h1>내 꿈에 가까워지는<br>진로상담센터 찾기</h1>
+        <p>내 주변의 진로·진학 전문 기관을 찾아보세요.</p>
     </div>
     """, unsafe_allow_html=True)
 
-with tab3:
-    st.subheader("자주 묻는 질문")
-    with st.expander("현재 위치는 어떻게 확인하나요?"):
-        st.write(
-            "현재 위치 확인 버튼을 누른 뒤 브라우저에서 위치 권한을 "
-            "허용하면 됩니다. 허용하지 않아도 지역을 직접 선택할 수 있어요."
+    with st.container(border=True):
+        st.markdown("### 📍 내 주변 진로상담센터 검색")
+
+        col1, col2 = st.columns(2)
+
+        with col1:
+            province = st.selectbox(
+                "시·도",
+                list(REGIONS.keys()),
+                key="home_province"
+            )
+
+        with col2:
+            district = st.selectbox(
+                "시·군·구",
+                REGIONS[province],
+                key="home_district"
+            )
+
+        category = st.selectbox(
+            "기관 유형",
+            list(CATEGORY_QUERIES.keys()),
+            key="home_category"
         )
 
-    with st.expander("검색 결과가 나오지 않아요."):
-        st.write(
-            "지도 데이터에 해당 기관이 등록되지 않았을 수 있어요. "
-            "지도에서 더 많은 상담센터 찾아보기를 이용해 보세요."
-        )
+        col3, col4 = st.columns([1, 2])
 
-    with st.expander("방문 전에 무엇을 확인해야 하나요?"):
-        st.write(
-            "운영 시간, 상담 대상, 예약 방법 및 연락처를 해당 기관의 "
-            "공식 홈페이지에서 확인한 후 방문하세요."
-        )
+        with col3:
+            if st.button(
+                "📍 현재 위치 사용",
+                use_container_width=True
+            ):
+                location = get_location()
 
-    st.caption(
-        "안내: 지도 검색 결과는 기관의 전체 목록이 아니며, "
-        "주소·운영 여부·상담 가능 여부는 방문 전에 확인해야 합니다."
+                if location:
+                    st.session_state["my_location"] = location
+                    st.session_state["my_area"] = reverse_geocode(
+                        *location
+                    )
+                    st.success(
+                        f"위치를 확인했어요: "
+                        f"{st.session_state['my_area']}"
+                    )
+                else:
+                    st.warning(
+                        "위치 권한을 확인하거나 지역을 직접 선택해 주세요."
+                    )
+
+        with col4:
+            if st.session_state.get("my_location"):
+                st.caption("현재 위치를 검색에 활용할 수 있어요.")
+            else:
+                st.caption(
+                    "위치 권한은 선택 사항이에요. "
+                    "지역을 직접 선택해도 됩니다."
+                )
+
+        area = f"{province} {district}"
+
+        if st.button(
+            "🔎 진로상담센터 검색하기",
+            type="primary",
+            use_container_width=True
+        ):
+            with st.spinner("진로 관련 기관을 찾고 있어요..."):
+                results = search_centers(
+                    area,
+                    category,
+                    st.session_state.get("my_location")
+                )
+
+            st.session_state["centers"] = results
+            st.session_state["search_area"] = area
+            st.session_state["search_category"] = category
+
+    st.markdown(
+        '<div class="section-title">✨ 이런 서비스를 이용할 수 있어요</div>',
+        unsafe_allow_html=True
     )
 
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        st.markdown("""
+        <div class="metric">
+            <div class="metric-number">📍</div>
+            <div class="metric-label">주변 센터 찾기</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with col2:
+        st.markdown("""
+        <div class="metric">
+            <div class="metric-number">🎓</div>
+            <div class="metric-label">진로·진학 정보</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with col3:
+        st.markdown("""
+        <div class="metric">
+            <div class="metric-number">🗓️</div>
+            <div class="metric-label">상담 준비하기</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    if "centers" in st.session_state:
+        results = st.session_state["centers"]
+        area = st.session_state.get("search_area", "선택 지역")
+        category = st.session_state.get(
+            "search_category",
+            "진로진학지원센터"
+        )
+
+        st.markdown(
+            '<div class="section-title">📌 검색 결과</div>',
+            unsafe_allow_html=True
+        )
+
+        st.markdown(
+            f"[🗺️ 지도에서 더 찾아보기]({map_link(area, category)})"
+        )
+
+        if results:
+            st.success(f"진로 관련 검색 결과 {len(results)}곳")
+
+            st.map(pd.DataFrame([
+                {"lat": place["lat"], "lon": place["lon"]}
+                for place in results
+            ]))
+
+            for index, place in enumerate(results):
+                with st.container(border=True):
+                    st.markdown("**🧭 진로·진학 관련 기관 후보**")
+                    st.markdown(f"### 🏫 {place['name']}")
+                    st.write(f"📍 {place['address']}")
+
+                    col1, col2 = st.columns(2)
+
+                    with col1:
+                        st.link_button(
+                            "위치 보기",
+                            place["map"],
+                            use_container_width=True
+                        )
+
+                    with col2:
+                        if st.button(
+                            "♡ 관심 센터 저장",
+                            key=f"fav_{index}",
+                            use_container_width=True
+                        ):
+                            favorites = st.session_state.get(
+                                "favorites", []
+                            )
+
+                            if place not in favorites:
+                                favorites.append(place)
+
+                            st.session_state["favorites"] = favorites
+                            st.success("관심 센터에 저장했어요.")
+
+                    with st.expander("센터 이용 전 확인하기"):
+                        st.write(
+                            "상담 대상, 상담 분야, 운영 시간, 예약 방법은 "
+                            "해당 기관의 공식 홈페이지나 전화로 확인하세요."
+                        )
+
+        else:
+            st.warning(
+                "조건에 맞는 기관을 지도 데이터에서 찾지 못했어요. "
+                "기관이 없다는 뜻은 아닙니다."
+            )
+
+            st.markdown(
+                f"[Google 지도에서 다시 검색하기]"
+                f"({map_link(area, category)})"
+            )
+
+
+# ---------- 예약 ----------
+with booking_tab:
+    st.markdown(
+        '<div class="section-title">📅 상담 예약 준비</div>',
+        unsafe_allow_html=True
+    )
+
+    st.write(
+        "상담 예약 전에 관심 분야와 가능한 날짜를 정리해 보세요."
+    )
+
+    with st.container(border=True):
+        topic = st.selectbox(
+            "상담하고 싶은 주제",
+            [
+                "진로 탐색",
+                "학과 선택",
+                "고등학교·대학교 진학",
+                "직업 정보",
+                "진로 변경"
+            ]
+        )
+
+        preferred_date = st.date_input("희망 상담 날짜")
+
+        note = st.text_area(
+            "상담 때 물어보고 싶은 내용",
+            placeholder="예: 관심 있는 학과와 관련 직업을 알고 싶어요."
+        )
+
+        if st.button(
+            "예약 메모 저장",
+            type="primary",
+            use_container_width=True
+        ):
+            st.session_state["booking_note"] = {
+                "topic": topic,
+                "date": str(preferred_date),
+                "note": note
+            }
+
+            st.success(
+                "예약 준비 메모를 저장했어요. "
+                "실제 예약은 기관의 공식 채널에서 진행해야 해요."
+            )
+
+    if "booking_note" in st.session_state:
+        booking = st.session_state["booking_note"]
+
+        st.markdown("#### 저장한 예약 메모")
+        st.write(f"**주제:** {booking['topic']}")
+        st.write(f"**희망 날짜:** {booking['date']}")
+        st.write(f"**질문:** {booking['note'] or '작성한 내용 없음'}")
+
+    st.info(
+        "이 앱은 예약 메모 기능을 제공하며, "
+        "실제 상담 예약을 접수하거나 확정하지는 않습니다."
+    )
+
+
+# ---------- 센터 찾기 ----------
+with finder_tab:
+    st.markdown(
+        '<div class="section-title">🔎 진로 전문 기관 찾기</div>',
+        unsafe_allow_html=True
+    )
+
+    st.write(
+        "지역과 기관 유형을 선택해 진로·진학 관련 기관을 검색하세요."
+    )
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        province2 = st.selectbox(
+            "시·도 선택",
+            list(REGIONS.keys()),
+            key="finder_province"
+        )
+
+    with col2:
+        district2 = st.selectbox(
+            "시·군·구 선택",
+            REGIONS[province2],
+            key="finder_district"
+        )
+
+    category2 = st.selectbox(
+        "기관 유형 선택",
+        list(CATEGORY_QUERIES.keys()),
+        key="finder_category"
+    )
+
+    if st.button(
+        "센터 검색",
+        key="finder_search",
+        type="primary",
+        use_container_width=True
+    ):
+        area2 = f"{province2} {district2}"
+
+        with st.spinner("검색 중..."):
+            results2 = search_centers(
+                area2,
+                category2,
+                st.session_state.get("my_location")
+            )
+
+        st.session_state["finder_results"] = results2
+        st.session_state["finder_area"] = area2
+        st.session_state["finder_category_result"] = category2
+
+    if "finder_results" in st.session_state:
+        results2 = st.session_state["finder_results"]
+        area2 = st.session_state.get(
+            "finder_area",
+            f"{province2} {district2}"
+        )
+        category2 = st.session_state.get(
+            "finder_category_result",
+            category2
+        )
+
+        st.markdown(
+            f"[Google 지도에서 추가 검색하기]"
+            f"({map_link(area2, category2)})"
+        )
+
+        if results2:
+            st.map(pd.DataFrame([
+                {"lat": place["lat"], "lon": place["lon"]}
+                for place in results2
+            ]))
+
+            for place in results2:
+                with st.container(border=True):
+                    st.markdown(f"### 🧭 {place['name']}")
+                    st.write(place["address"])
+                    st.link_button("지도에서 위치 보기", place["map"])
+
+        else:
+            st.warning(
+                "검색 결과가 없어요. 지도 데이터에 정보가 없을 수 있어요."
+            )
+
+            st.markdown(
+                f"[지도에서 다시 검색하기]({map_link(area2, category2)})"
+            )
+
+
+# ---------- 마이페이지 ----------
+with my_tab:
+    st.markdown(
+        '<div class="section-title">👤 마이페이지</div>',
+        unsafe_allow_html=True
+    )
+
+    st.write(
+        "저장한 관심 센터와 상담 준비 메모를 확인할 수 있어요."
+    )
+
+    with st.container(border=True):
+        st.markdown("### 🙋 사용자 정보")
+
+        nickname = st.text_input(
+            "닉네임",
+            value=st.session_state.get("nickname", ""),
+            placeholder="닉네임을 입력하세요"
+        )
+
+        if st.button("닉네임 저장"):
+            st.session_state["nickname"] = nickname
+            st.success("닉네임을 저장했어요.")
+
+    st.markdown("### ♡ 관심 센터")
+
+    favorites = st.session_state.get("favorites", [])
+
+    if favorites:
+        for place in favorites:
+            with st.container(border=True):
+                st.markdown(f"**{place['name']}**")
+                st.caption(place["address"])
+                st.markdown(f"[지도 보기]({place['map']})")
+    else:
+        st.info(
+            "아직 저장한 관심 센터가 없어요. "
+            "홈의 검색 결과에서 저장할 수 있어요."
+        )
+
+    st.markdown("### 📋 상담 메모")
+
+    if "booking_note" in st.session_state:
+        booking = st.session_state["booking_note"]
+
+        st.write(
+            f"주제: {booking['topic']} · "
+            f"희망 날짜: {booking['date']}"
+        )
+
+        st.write(booking["note"] or "추가 질문 없음")
+    else:
+        st.info("아직 저장한 상담 메모가 없어요.")
+
+
+# ---------- 커뮤니티 ----------
+with community_tab:
+    st.markdown(
+        '<div class="section-title">💬 진로 커뮤니티</div>',
+        unsafe_allow_html=True
+    )
+
+    st.write(
+        "진로 고민과 정보를 나누는 공간입니다. "
+        "아래 게시글은 예시이며 실제 이용자 게시글이 아닙니다."
+    )
+
+    with st.container(border=True):
+        st.markdown("### 🌱 어떤 학과가 나에게 맞을까요?")
+        st.caption("진로 고민 · 예시 게시글")
+
+        st.write(
+            "관심 있는 과목과 좋아하는 활동을 정리한 뒤, "
+            "관련 학과의 수업과 진출 분야를 찾아보면 도움이 돼요."
+        )
+
+    with st.container(border=True):
+        st.markdown("### 🎓 진로상담을 받기 전에 준비할 것")
+        st.caption("상담 준비 · 예시 게시글")
+
+        st.write(
+            "궁금한 점을 2~3개 적고 관심 직업이나 학과를 정리해 가면 "
+            "상담 시간을 더 잘 활용할 수 있어요."
+        )
+
+    st.markdown("### ✍️ 나의 진로 고민 작성")
+
+    post_title = st.text_input(
+        "제목",
+        placeholder="진로 고민을 적어 주세요"
+    )
+
+    post_body = st.text_area(
+        "내용",
+        placeholder="어떤 점이 고민인가요?"
+    )
+
+    if st.button(
+        "게시글 등록",
+        type="primary",
+        use_container_width=True
+    ):
+        if post_title.strip() and post_body.strip():
+            posts = st.session_state.get("community_posts", [])
+
+            posts.insert(0, {
+                "title": post_title.strip(),
+                "body": post_body.strip()
+            })
+
+            st.session_state["community_posts"] = posts
+
+            st.success(
+                "게시글을 등록했어요. 현재 세션에서만 보관됩니다."
+            )
+        else:
+            st.warning("제목과 내용을 모두 입력해 주세요.")
+
+    for post in st.session_state.get("community_posts", []):
+        with st.container(border=True):
+            st.markdown(f"### {post['title']}")
+            st.write(post["body"])
+
+
 st.divider()
+
 st.caption(
-    "진로상담센터 안내 | 지역별 상담 기관을 찾기 위한 정보 서비스"
+    "진로상담센터 찾기 · 지도 데이터 기반 검색 서비스. "
+    "검색 결과는 전체 기관 목록이 아니며, 실제 상담 제공 여부와 "
+    "운영 정보는 공식 채널에서 확인하세요."
 )
