@@ -1,8 +1,6 @@
 import os
 import streamlit as st
-from google import genai
-from google.genai import types
-from google.genai.errors import APIError
+import google.generativeai as genai
 
 # ==========================================
 # 1. 페이지 설정 및 디자인 스타일 (CSS)
@@ -14,7 +12,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS - 버튼 크기와 위치 완벽 통일
+# Custom CSS - 카드 버튼 크기 완벽 통일
 st.markdown("""
 <style>
     /* 전체 배경 */
@@ -53,7 +51,7 @@ st.markdown("""
         line-height: 1.6;
     }
 
-    /* 🔥 카드 버튼 크기 및 텍스트 위치 완벽 통일 */
+    /* 카드 버튼 크기 및 텍스트 위치 완벽 통일 */
     div[data-testid="stColumn"] {
         display: flex;
         justify-content: center;
@@ -119,26 +117,16 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ==========================================
-# 2. Gemini API 클라이언트 초기화
+# 2. Gemini API 키 설정 및 초기화
 # ==========================================
-@st.cache_resource
-def get_genai_client():
-    api_key = None
-    if "GEMINI_API_KEY" in st.secrets:
-        api_key = st.secrets["GEMINI_API_KEY"]
-    elif "GEMINI_API_KEY" in os.environ:
-        api_key = os.environ["GEMINI_API_KEY"]
+api_key = None
+if "GEMINI_API_KEY" in st.secrets:
+    api_key = st.secrets["GEMINI_API_KEY"]
+elif "GEMINI_API_KEY" in os.environ:
+    api_key = os.environ["GEMINI_API_KEY"]
 
-    if not api_key:
-        return None
-    
-    try:
-        return genai.Client(api_key=api_key)
-    except Exception as e:
-        st.error(f"GenAI 클라이언트 생성 오류: {e}")
-        return None
-
-client = get_genai_client()
+if api_key:
+    genai.configure(api_key=api_key)
 
 # ==========================================
 # 3. 세션 상태 (Session State) 초기화
@@ -197,7 +185,7 @@ profile_summary = f"""
 st.markdown('<div class="app-header">🤖 AI 진로 상담</div>', unsafe_allow_html=True)
 st.markdown('<div class="app-subtitle">너의 고민, AI와 함께 나누어 보세요.</div>', unsafe_allow_html=True)
 
-if not client:
+if not api_key:
     st.warning("⚠️ **GEMINI_API_KEY**가 설정되지 않았습니다. Secrets 설정을 확인해 주세요.")
     st.stop()
 
@@ -298,19 +286,13 @@ if prompt := st.chat_input("답변이나 궁금한 점을 여기에 입력하세
         """
 
         try:
-            response = client.models.generate_content(
-                model='gemini-3.5-flash-lite',
-                contents=f"{system_instruction}\n\n사용자 메시지: {prompt}",
-                config=types.GenerateContentConfig(
-                    temperature=0.7,
-                    max_output_tokens=1500,
-                )
-            )
+            # google-generativeai 패키지 방식 호출 (gemini-2.5-flash)
+            model = genai.GenerativeModel("gemini-2.5-flash")
+            response = model.generate_content(f"{system_instruction}\n\n사용자 메시지: {prompt}")
+            
             bot_response = response.text
             message_placeholder.markdown(bot_response)
             st.session_state.messages.append({"role": "assistant", "content": bot_response})
 
-        except APIError as e:
-            message_placeholder.error(f"Gemini API 오류가 발생했습니다: {e.message}")
         except Exception as e:
             message_placeholder.error(f"오류가 발생했습니다: {str(e)}")
