@@ -310,9 +310,9 @@ if prompt := st.chat_input("답변이나 궁금한 점을 여기에 입력하세
         """
 
         try:
-            # 최신 표준 모델 적용 및 스트리밍 답변 생성
+            # 요구되는 최신 모델인 gemini-3.5-flash-lite로 변경
             response = client.models.generate_content_stream(
-                model='gemini-2.5-flash-lite',
+                model='gemini-3.5-flash-lite',
                 contents=prompt_instruction,
                 config=types.GenerateContentConfig(
                     temperature=0.7,
@@ -326,9 +326,3 @@ if prompt := st.chat_input("답변이나 궁금한 점을 여기에 입력하세
                     message_placeholder.markdown(full_response + "▌")
 
             message_placeholder.markdown(full_response)
-            st.session_state.messages.append({"role": "assistant", "content": full_response})
-
-        except APIError as e:
-            message_placeholder.error(f"Gemini API 오류가 발생했습니다: {e.message}")
-        except Exception as e:
-            message_placeholder.error(f"오류가 발생했습니다: {str(e)}")
