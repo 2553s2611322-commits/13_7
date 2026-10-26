@@ -265,7 +265,6 @@ if prompt := st.chat_input("답변이나 궁금한 점을 여기에 입력하세
     if not st.session_state.selected_mode:
         st.session_state.selected_mode = "일반 상담"
 
-    # 1. 화면에 사용자 메시지 추가
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
@@ -288,19 +287,19 @@ if prompt := st.chat_input("답변이나 궁금한 점을 여기에 입력하세
         """
 
         try:
-            # 2. 안정적인 gemini-2.0-flash 모델 설정
+            # 오류 메시지에서 요구하는 최신 모델 지정 (gemini-3.8-flash)
             model = genai.GenerativeModel(
-                model_name="gemini-2.0-flash",
+                model_name="gemini-3.8-flash",
                 system_instruction=system_instruction
             )
 
-            # 3. 누적된 대화 내역을 API 포맷(user/model)으로 변환
+            # 이전 대화 기록 구성
             history = []
-            for msg in st.session_state.messages[:-1]:  # 마지막 사용자 메시지 제외
+            for msg in st.session_state.messages[:-1]:
                 role = "user" if msg["role"] == "user" else "model"
                 history.append({"role": role, "parts": [msg["content"]]})
 
-            # 4. 세션 기반 대화 수행 (이전 대화 맥락 유지)
+            # 채팅 세션 생성 및 질문 전달
             chat = model.start_chat(history=history)
             response = chat.send_message(prompt)
 
