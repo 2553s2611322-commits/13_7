@@ -253,7 +253,7 @@ if st.session_state.selected_mode:
     st.markdown(f'<div class="selected-mode-badge">📌 현재 선택된 옵션: {st.session_state.selected_mode}</div>', unsafe_allow_html=True)
 
 # ==========================================
-# 7. 대화 세션 및 메시지 처리
+# 7. 대화 세션 및 스트리밍 답변 처리
 # ==========================================
 # 이전 대화 내역 출력
 for message in st.session_state.messages:
@@ -270,42 +270,45 @@ if prompt := st.chat_input("답변이나 궁금한 점을 여기에 입력하세
         st.markdown(prompt)
 
     with st.chat_message("assistant"):
+        # 실시간 생성을 보여줄 빈 영역 생성
         message_placeholder = st.empty()
-        message_placeholder.markdown("🤔 *생각하고 있어요...*")
+        full_response = ""
 
-        system_instruction = f"""
-        당신은 따뜻하고 공감 능력이 뛰어난 진로 전문 AI 상담사입니다.
-        현재 상담 옵션: [{st.session_state.selected_mode}]
-        
-        {profile_summary}
-        
-        [지침]
-        - 사용자가 입력한 사이드바 프로필과 이전 대화 내용, 그리고 이번 메시지를 종합해서 자연스럽게 대화를 이어가세요.
-        - 정보가 충분하다면 옵션[{st.session_state.selected_mode}]에 맞는 구체적인 학과/직업/답변을 추천해 주세요.
-        - 정보가 더 필요하거나 사용자가 계속 대화를 이어가려 한다면 연속해서 친절하게 질문을 던져주세요.
-        - 이모지와 마크다운을 활용해 가독성 높고 친근하게 작성해 주세요.
+        # 과거 대화 맥락 포함 전달 문맥 생성
+        history_text = ""
+        for msg in st.session_state.messages[:-1]:
+            role_name = "사용자" if msg["role"] == "user" else "AI"
+            history_text += f"{role_name}: {msg['content']}\n"
+
+        full_prompt = f"""
+당신은 따뜻하고 친절한 진로 전문 AI 상담사입니다.
+현재 상담 옵션: [{st.session_state.selected_mode}]
+
+{profile_summary}
+
+[이전 대화 내역]
+{history_text}
+
+[사용자의 이번 질문]
+{prompt}
+
+위 맥락을 반영하여 질문에 대해 명확하고 도움이 되는 맞춤 추천 및 상담 답변을 친절하게 작성해 주세요.
         """
 
         try:
-            # 오류 메시지에서 요구하는 최신 모델 지정 (gemini-3.8-flash)
-            model = genai.GenerativeModel(
-                model_name="gemini-3.8-flash",
-                system_instruction=system_instruction
-            )
+            model = genai.GenerativeModel("gemini-3.8-flash")
+            
+            # stream=True 옵션으로 즉시 텍스트가 뿜어져 나오게 설정
+            response = model.generate_content(full_prompt, stream=True)
 
-            # 이전 대화 기록 구성
-            history = []
-            for msg in st.session_state.messages[:-1]:
-                role = "user" if msg["role"] == "user" else "model"
-                history.append({"role": role, "parts": [msg["content"]]})
-
-            # 채팅 세션 생성 및 질문 전달
-            chat = model.start_chat(history=history)
-            response = chat.send_message(prompt)
-
-            bot_response = response.text
-            message_placeholder.markdown(bot_response)
-            st.session_state.messages.append({"role": "assistant", "content": bot_response})
+            for chunk in response:
+                if chunk.text:
+                    full_response += chunk.text
+                    message_placeholder.markdown(full_response + "▌")
+            
+            # 최종 완료 처리
+            message_placeholder.markdown(full_response)
+            st.session_state.messages.append({"role": "assistant", "content": full_response})
 
         except Exception as e:
             message_placeholder.error(f"오류가 발생했습니다: {str(e)}")
