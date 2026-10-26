@@ -12,7 +12,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS - 카드 버튼 크기 완벽 통일
+# Custom CSS - 카드 버튼 크기 및 디자인 완벽 통일
 st.markdown("""
 <style>
     /* 전체 배경 */
@@ -51,7 +51,7 @@ st.markdown("""
         line-height: 1.6;
     }
 
-    /* 카드 버튼 크기 및 텍스트 위치 완벽 통일 */
+    /* 카드 버튼 크기 통일 */
     div[data-testid="stColumn"] {
         display: flex;
         justify-content: center;
@@ -160,8 +160,8 @@ with st.sidebar:
         "ISTJ", "ISFJ", "ESTJ", "ESFJ",
         "ISTP", "ISFP", "ESTP", "ESFP"
     ])
-    interests = st.text_input("관심 분야 / 흥미", placeholder="예: IT, 디자인, 심리학")
-    strengths = st.text_input("강점 / 잘하는 과목", placeholder="예: 수학, 영어, 소통능력")
+    interests = st.text_input("관심 분야 / 흥미", placeholder="예: IT, 경영, 미술, 생명과학")
+    strengths = st.text_input("강점 / 잘하는 과목", placeholder="예: 수학, 영어, 문제 해결력")
 
     st.markdown("""
     <div class="sidebar-footer">
@@ -173,10 +173,10 @@ with st.sidebar:
     """, unsafe_allow_html=True)
 
 profile_summary = f"""
-[사용자 프로필 정보]
+[사용자 기본 프로필]
 - MBTI: {mbti}
-- 관심 분야: {interests if interests else '대화 내용 참고'}
-- 강점: {strengths if strengths else '대화 내용 참고'}
+- 관심 분야: {interests if interests else '입력 안됨'}
+- 강점/잘하는 과목: {strengths if strengths else '입력 안됨'}
 """
 
 # ==========================================
@@ -253,7 +253,7 @@ if st.session_state.selected_mode:
     st.markdown(f'<div class="selected-mode-badge">📌 현재 선택된 옵션: {st.session_state.selected_mode}</div>', unsafe_allow_html=True)
 
 # ==========================================
-# 7. 대화 세션 및 스트리밍 답변 처리
+# 7. 대화 세션 및 고속 스트리밍 처리
 # ==========================================
 # 이전 대화 내역 출력
 for message in st.session_state.messages:
@@ -270,45 +270,31 @@ if prompt := st.chat_input("답변이나 궁금한 점을 여기에 입력하세
         st.markdown(prompt)
 
     with st.chat_message("assistant"):
-        # 실시간 생성을 보여줄 빈 영역 생성
-        message_placeholder = st.empty()
-        full_response = ""
-
-        # 과거 대화 맥락 포함 전달 문맥 생성
-        history_text = ""
-        for msg in st.session_state.messages[:-1]:
-            role_name = "사용자" if msg["role"] == "user" else "AI"
-            history_text += f"{role_name}: {msg['content']}\n"
-
-        full_prompt = f"""
-당신은 따뜻하고 친절한 진로 전문 AI 상담사입니다.
-현재 상담 옵션: [{st.session_state.selected_mode}]
-
-{profile_summary}
-
-[이전 대화 내역]
-{history_text}
-
-[사용자의 이번 질문]
-{prompt}
-
-위 맥락을 반영하여 질문에 대해 명확하고 도움이 되는 맞춤 추천 및 상담 답변을 친절하게 작성해 주세요.
+        # 대한민국 대학 학과 및 실제 직업 조건 명시
+        prompt_instruction = f"""
+        당신은 대한민국 진로 및 입시 전문 AI 상담사입니다.
+        현재 진행 중인 상담 모드: [{st.session_state.selected_mode}]
+        
+        {profile_summary}
+        
+        [필수 규칙 및 지침]
+        1. 학과 추천이나 직업 추천 시 반드시 **현재 대한민국 대학교에 실제로 개설되어 존재하는 학과명**과 **현재 실제로 존재하는 직업명**만을 추천하세요.
+        2. 학과/직업 추천 시 각 학과의 핵심 특징과 추천하는 이유를 명확하고 명료하게 설명하세요.
+        3. 사용자의 질문: "{prompt}"
+        4. 가독성이 높도록 이모지와 마크다운 번호/불렛을 사용하여 친절하게 답변하세요.
         """
 
-        try:
-            model = genai.GenerativeModel("gemini-3.8-flash")
-            
-            # stream=True 옵션으로 즉시 텍스트가 뿜어져 나오게 설정
-            response = model.generate_content(full_prompt, stream=True)
+        def generate_response():
+            try:
+                # 가장 신속하고 빠른 정식 지원 모델 사용
+                model = genai.GenerativeModel("gemini-1.5-flash")
+                response = model.generate_content(prompt_instruction, stream=True)
+                for chunk in response:
+                    if chunk.text:
+                        yield chunk.text
+            except Exception as e:
+                yield f"오류가 발생했습니다: {str(e)}"
 
-            for chunk in response:
-                if chunk.text:
-                    full_response += chunk.text
-                    message_placeholder.markdown(full_response + "▌")
-            
-            # 최종 완료 처리
-            message_placeholder.markdown(full_response)
-            st.session_state.messages.append({"role": "assistant", "content": full_response})
-
-        except Exception as e:
-            message_placeholder.error(f"오류가 발생했습니다: {str(e)}")
+        # 실시간 스트리밍 답변 출력 (타자기 효과 및 빠른 반응속도)
+        full_response = st.write_stream(generate_response)
+        st.session_state.messages.append({"role": "assistant", "content": full_response})
