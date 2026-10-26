@@ -752,8 +752,3 @@ st.caption(
     "검색 결과는 전체 기관 목록이 아니며, 실제 진로상담 제공 여부와 "
     "운영 정보는 공식 채널에서 확인하세요."
 )
-
-
-streamlit
-requests
-streamlit-geolocation
