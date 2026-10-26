@@ -1,6 +1,8 @@
 import os
 import streamlit as st
-import google.generativeai as genai
+from google import genai
+from google.genai import types
+from google.genai.errors import APIError
 
 # ==========================================
 # 1. 페이지 설정 및 디자인 스타일 (CSS)
@@ -12,7 +14,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS - 카드 버튼 크기 및 디자인 완벽 통일
+# Custom CSS - 통일된 카드 버튼 크기
 st.markdown("""
 <style>
     /* 전체 배경 */
@@ -51,7 +53,7 @@ st.markdown("""
         line-height: 1.6;
     }
 
-    /* 카드 버튼 크기 통일 */
+    /* 카드 버튼 크기 및 텍스트 정렬 완벽 통일 */
     div[data-testid="stColumn"] {
         display: flex;
         justify-content: center;
@@ -117,16 +119,26 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ==========================================
-# 2. Gemini API 키 설정 및 초기화
+# 2. Gemini API 클라이언트 초기화
 # ==========================================
-api_key = None
-if "GEMINI_API_KEY" in st.secrets:
-    api_key = st.secrets["GEMINI_API_KEY"]
-elif "GEMINI_API_KEY" in os.environ:
-    api_key = os.environ["GEMINI_API_KEY"]
+@st.cache_resource
+def get_genai_client():
+    api_key = None
+    if "GEMINI_API_KEY" in st.secrets:
+        api_key = st.secrets["GEMINI_API_KEY"]
+    elif "GEMINI_API_KEY" in os.environ:
+        api_key = os.environ["GEMINI_API_KEY"]
 
-if api_key:
-    genai.configure(api_key=api_key)
+    if not api_key:
+        return None
+    
+    try:
+        return genai.Client(api_key=api_key)
+    except Exception as e:
+        st.error(f"GenAI 클라이언트 초기화 오류: {e}")
+        return None
+
+client = get_genai_client()
 
 # ==========================================
 # 3. 세션 상태 (Session State) 초기화
@@ -175,8 +187,8 @@ with st.sidebar:
 profile_summary = f"""
 [사용자 기본 프로필]
 - MBTI: {mbti}
-- 관심 분야: {interests if interests else '입력 안됨'}
-- 강점/잘하는 과목: {strengths if strengths else '입력 안됨'}
+- 관심 분야: {interests if interests else '대화 내용 참고'}
+- 강점/잘하는 과목: {strengths if strengths else '대화 내용 참고'}
 """
 
 # ==========================================
@@ -185,7 +197,7 @@ profile_summary = f"""
 st.markdown('<div class="app-header">🤖 AI 진로 상담</div>', unsafe_allow_html=True)
 st.markdown('<div class="app-subtitle">너의 고민, AI와 함께 나누어 보세요.</div>', unsafe_allow_html=True)
 
-if not api_key:
+if not client:
     st.warning("⚠️ **GEMINI_API_KEY**가 설정되지 않았습니다. Secrets 설정을 확인해 주세요.")
     st.stop()
 
@@ -253,7 +265,7 @@ if st.session_state.selected_mode:
     st.markdown(f'<div class="selected-mode-badge">📌 현재 선택된 옵션: {st.session_state.selected_mode}</div>', unsafe_allow_html=True)
 
 # ==========================================
-# 7. 대화 세션 및 고속 스트리밍 처리
+# 7. 대화 세션 및 스트리밍 처리
 # ==========================================
 # 이전 대화 내역 출력
 for message in st.session_state.messages:
@@ -270,31 +282,53 @@ if prompt := st.chat_input("답변이나 궁금한 점을 여기에 입력하세
         st.markdown(prompt)
 
     with st.chat_message("assistant"):
-        # 대한민국 대학 학과 및 실제 직업 조건 명시
+        message_placeholder = st.empty()
+        full_response = ""
+
+        # 과거 대화 맥락 수집
+        history_text = ""
+        for msg in st.session_state.messages[:-1]:
+            role_name = "사용자" if msg["role"] == "user" else "AI"
+            history_text += f"{role_name}: {msg['content']}\n"
+
         prompt_instruction = f"""
-        당신은 대한민국 진로 및 입시 전문 AI 상담사입니다.
+        당신은 따뜻하고 전문적인 대한민국 진로 전문 AI 상담사입니다.
         현재 진행 중인 상담 모드: [{st.session_state.selected_mode}]
         
         {profile_summary}
         
+        [이전 대화 맥락]
+        {history_text}
+        
+        [사용자의 최근 메시지]
+        {prompt}
+        
         [필수 규칙 및 지침]
-        1. 학과 추천이나 직업 추천 시 반드시 **현재 대한민국 대학교에 실제로 개설되어 존재하는 학과명**과 **현재 실제로 존재하는 직업명**만을 추천하세요.
-        2. 학과/직업 추천 시 각 학과의 핵심 특징과 추천하는 이유를 명확하고 명료하게 설명하세요.
-        3. 사용자의 질문: "{prompt}"
-        4. 가독성이 높도록 이모지와 마크다운 번호/불렛을 사용하여 친절하게 답변하세요.
+        1. 학과 및 직업 추천 시 **현재 대한민국 대학교에 실제로 존재하고 개설되어 있는 학과명**과 **실제 존재하는 직업명**만을 추천하세요.
+        2. 학과/직업을 추천할 때 해당 분야의 핵심 진로, 배우는 내용, 그리고 사용자에게 추천하는 이유를 명확하게 설명하세요.
+        3. 친절하고 공감해주는 어조로 작성하고, 이모지와 마크다운 서식을 활용해 가독성 있게 답변해 주세요.
         """
 
-        def generate_response():
-            try:
-                # 가장 신속하고 빠른 정식 지원 모델 사용
-                model = genai.GenerativeModel("gemini-1.5-flash")
-                response = model.generate_content(prompt_instruction, stream=True)
-                for chunk in response:
-                    if chunk.text:
-                        yield chunk.text
-            except Exception as e:
-                yield f"오류가 발생했습니다: {str(e)}"
+        try:
+            # 최신 표준 모델 적용 및 스트리밍 답변 생성
+            response = client.models.generate_content_stream(
+                model='gemini-2.5-flash-lite',
+                contents=prompt_instruction,
+                config=types.GenerateContentConfig(
+                    temperature=0.7,
+                    max_output_tokens=1500,
+                )
+            )
 
-        # 실시간 스트리밍 답변 출력 (타자기 효과 및 빠른 반응속도)
-        full_response = st.write_stream(generate_response)
-        st.session_state.messages.append({"role": "assistant", "content": full_response})
+            for chunk in response:
+                if chunk.text:
+                    full_response += chunk.text
+                    message_placeholder.markdown(full_response + "▌")
+
+            message_placeholder.markdown(full_response)
+            st.session_state.messages.append({"role": "assistant", "content": full_response})
+
+        except APIError as e:
+            message_placeholder.error(f"Gemini API 오류가 발생했습니다: {e.message}")
+        except Exception as e:
+            message_placeholder.error(f"오류가 발생했습니다: {str(e)}")
