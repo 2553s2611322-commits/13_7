@@ -1,108 +1,12 @@
-import streamlit as st
-
-st.set_page_config(
-    page_title="진로적성검사",
-    page_icon="🧭",
-    layout="centered",
-    initial_sidebar_state="collapsed",
-)
-
-# 간단한 흥미 탐색용 문항입니다. 전문적인 심리검사나 진단을 대체하지 않습니다.
-TYPE_INFO = {
-    "탐구형": {
-        "emoji": "🔬",
-        "summary": "궁금한 것을 깊이 파고들고, 자료와 근거를 바탕으로 문제를 해결하는 활동을 좋아해요.",
-        "jobs": ["연구원", "데이터 분석가", "과학자", "수의사", "시장 조사 분석가"],
-        "strengths": ["분석하기", "관찰하기", "논리적으로 생각하기"],
-        "tips": "관심 있는 주제를 정해 자료를 찾아보고, 결과를 표나 짧은 보고서로 정리해 보세요.",
-    },
-    "창의형": {
-        "emoji": "🎨",
-        "summary": "새로운 아이디어를 떠올리고, 글·그림·영상 등으로 자신만의 생각을 표현하는 것을 좋아해요.",
-        "jobs": ["디자이너", "작가", "영상 제작자", "콘텐츠 기획자", "건축가"],
-        "strengths": ["상상하기", "표현하기", "새롭게 만들기"],
-        "tips": "작은 작품이나 콘텐츠를 하나 완성해 보고, 어떤 과정이 가장 즐거웠는지 기록해 보세요.",
-    },
-    "실행형": {
-        "emoji": "🛠️",
-        "summary": "직접 만들고 조작하거나 몸을 움직여 실제 결과물을 완성하는 활동을 좋아해요.",
-        "jobs": ["로봇·기계 기술자", "요리사", "제품 제작자", "운동 지도자", "정비 기술자"],
-        "strengths": ["실행하기", "도구 활용하기", "실제로 시험해 보기"],
-        "tips": "과학 실험, 만들기, 요리, 스포츠처럼 직접 해 볼 수 있는 활동에 참여해 보세요.",
-    },
-    "도움형": {
-        "emoji": "🤝",
-        "summary": "다른 사람의 이야기를 듣고 돕거나, 함께 배우고 성장하는 활동에서 보람을 느껴요.",
-        "jobs": ["교사", "상담사", "간호사", "사회복지사", "작업치료사"],
-        "strengths": ["공감하기", "설명하기", "협력하기"],
-        "tips": "친구에게 공부 내용을 설명하거나 학교 봉사활동에 참여하며 잘 맞는 역할을 찾아보세요.",
-    },
-    "도전형": {
-        "emoji": "🚀",
-        "summary": "목표를 세우고 사람들을 설득하거나, 계획을 이끌며 새로운 일에 도전하는 것을 좋아해요.",
-        "jobs": ["기업가", "마케팅 기획자", "프로젝트 매니저", "변호사", "행사 기획자"],
-        "strengths": ["목표 세우기", "의견 전달하기", "주도하기"],
-        "tips": "모둠 활동에서 작은 목표와 역할을 정해 진행을 맡아 보고, 결과를 돌아보세요.",
-    },
-    "체계형": {
-        "emoji": "📊",
-        "summary": "정보를 정리하고 순서와 규칙을 세우며, 꼼꼼하게 계획을 실행하는 활동을 좋아해요.",
-        "jobs": ["회계 담당자", "사서", "행정 담당자", "품질 관리 담당자", "기록·정보 관리 전문가"],
-        "strengths": ["정리하기", "계획하기", "세부 사항 확인하기"],
-        "tips": "관심 있는 과제의 일정표나 체크리스트를 만들어 계획대로 진행해 보세요.",
-    },
-}
-
-QUESTIONS = [
-    ("새로운 주제의 원리나 이유를 찾아보는 것이 재미있다.", "탐구형"),
-    ("그림, 글, 영상 등으로 나만의 아이디어를 표현하고 싶다.", "창의형"),
-    ("설명서를 보고 물건을 직접 조립하거나 만들어 보는 편이다.", "실행형"),
-    ("친구가 고민을 이야기하면 들어주고 해결을 도와주고 싶다.", "도움형"),
-    ("모둠에서 목표를 정하고 사람들을 이끄는 역할이 좋다.", "도전형"),
-    ("자료와 물건을 기준에 따라 정리하는 것이 편하다.", "체계형"),
-    ("실험이나 조사로 사실을 확인하는 과정이 흥미롭다.", "탐구형"),
-    ("정해진 답보다 여러 가지 독창적인 방법을 생각하는 편이다.", "창의형"),
-    ("직접 움직이거나 도구를 사용해 결과를 만드는 것이 좋다.", "실행형"),
-    ("누군가에게 내용을 알려 주거나 함께 연습하는 것이 좋다.", "도움형"),
-    ("발표나 토론에서 내 의견을 말하고 다른 사람을 설득하는 편이다.", "도전형"),
-    ("숫자, 일정, 목록을 꼼꼼하게 확인하는 편이다.", "체계형"),
-    ("복잡한 문제를 작은 부분으로 나누어 분석하는 것이 좋다.", "탐구형"),
-    ("새로운 디자인이나 이야기의 분위기를 구상하는 것이 좋다.", "창의형"),
-    ("생각만 하기보다 먼저 시도해 보며 배우는 편이다.", "실행형"),
-    ("사람들의 기분을 살피고 서로 협력하도록 돕는 편이다.", "도움형"),
-    ("계획을 세워 목표를 달성하거나 프로젝트를 추진하는 것이 좋다.", "도전형"),
-    ("정해진 절차를 따라 정확하게 일을 마무리하는 것이 좋다.", "체계형"),
-]
-
-CHOICES = {
-    "매우 그렇다": 4,
-    "그렇다": 3,
-    "보통이다": 2,
-    "그렇지 않다": 1,
-    "전혀 그렇지 않다": 0,
-}
-
-def calculate_scores(answers):
-    scores = {kind: 0 for kind in TYPE_INFO}
-    for index, answer in answers.items():
-        if answer is not None:
-            kind = QUESTIONS[index][1]
-            scores[kind] += CHOICES[answer]
-    return scores
-
-def reset_test():
-    for key in list(st.session_state.keys()):
-        if key.startswith("answer_") or key in ("show_result", "started"):
-            del st.session_state[key]
 
 st.markdown(
     """
     <style>
-    .stApp { background: linear-gradient(180deg, #f4f9ff 0%, #ffffff 50%); }
+    .stApp { background: linear-gradient(180deg, #fff0f6 0%, #fff9fc 55%, #ffffff 100%); }
     .main .block-container { max-width: 850px; padding-top: 2rem; padding-bottom: 3rem; }
-    .hero { background: #d9eafa; border: 1px solid #b8d2e9; border-radius: 22px; padding: 1.4rem 1.5rem; }
-    .hero h1 { margin: 0; color: #17324d; }
-    .hero p { color: #34516b; margin-bottom: 0; }
+    .hero { background: linear-gradient(135deg, #ffd6e7, #ffeaf3); border: 1px solid #f4aeca; border-radius: 22px; padding: 1.4rem 1.5rem; }
+    .hero h1 { margin: 0; color: #7d244b; }
+    .hero p { color: #934866; margin-bottom: 0; }
     .small-note { color: #536779; font-size: 0.9rem; }
     </style>
     """,
@@ -173,9 +77,15 @@ else:
         st.write(f"**{TYPE_INFO[kind]['emoji']} {kind}** · {score}/{max_score}점")
         st.progress(score / max_score)
 
-    st.markdown("#### 추천 직업")
+    st.markdown("### 💼 추천 직업")
     st.write("관심을 더 알아볼 만한 직업들이에요. 직업 이름을 보고 실제 하는 일과 필요한 역량도 함께 조사해 보세요.")
-    st.write(" · ".join(TYPE_INFO[top_type]["jobs"]))
+    jobs_html = "".join(
+        f'<div style="font-size:1.35rem;font-weight:700;padding:0.7rem 0.9rem;margin:0.45rem 0;'
+        f'background:#ffe3ef;border:1px solid #f4b6d0;border-radius:12px;color:#8a2852;">'
+        f'⭐ {job}</div>'
+        for job in TYPE_INFO[top_type]["jobs"]
+    )
+    st.markdown(jobs_html, unsafe_allow_html=True)
 
     st.markdown("#### 나의 강점 키워드")
     st.write(" · ".join(TYPE_INFO[top_type]["strengths"]))
