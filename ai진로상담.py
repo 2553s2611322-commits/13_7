@@ -255,7 +255,7 @@ if st.session_state.selected_mode:
 # ==========================================
 # 7. 대화 세션 및 메시지 처리
 # ==========================================
-# 대화 내역 출력
+# 이전 대화 내역 출력
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
@@ -265,13 +265,14 @@ if prompt := st.chat_input("답변이나 궁금한 점을 여기에 입력하세
     if not st.session_state.selected_mode:
         st.session_state.selected_mode = "일반 상담"
 
+    # 1. 화면에 사용자 메시지 추가
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
 
     with st.chat_message("assistant"):
         message_placeholder = st.empty()
-        message_placeholder.markdown("🤔 *보내주신 정보를 바탕으로 분석하고 있어요...*")
+        message_placeholder.markdown("🤔 *생각하고 있어요...*")
 
         system_instruction = f"""
         당신은 따뜻하고 공감 능력이 뛰어난 진로 전문 AI 상담사입니다.
@@ -280,16 +281,29 @@ if prompt := st.chat_input("답변이나 궁금한 점을 여기에 입력하세
         {profile_summary}
         
         [지침]
-        - 사용자가 사이드바에 입력한 프로필(MBTI, 관심사, 강점)과 채팅으로 보내준 정보(답변)를 모두 결합하여 종합적으로 분석해 주세요.
-        - 선택된 옵션 [{st.session_state.selected_mode}]에 맞춰 관련 높은 학과, 직업, 진로 방향을 추천하고 이유를 명확하게 설명해 주세요.
-        - 답변은 이모지와 마크다운을 활용해 밝고 다정하게 가독성 높게 작성해 주세요.
+        - 사용자가 입력한 사이드바 프로필과 이전 대화 내용, 그리고 이번 메시지를 종합해서 자연스럽게 대화를 이어가세요.
+        - 정보가 충분하다면 옵션[{st.session_state.selected_mode}]에 맞는 구체적인 학과/직업/답변을 추천해 주세요.
+        - 정보가 더 필요하거나 사용자가 계속 대화를 이어가려 한다면 연속해서 친절하게 질문을 던져주세요.
+        - 이모지와 마크다운을 활용해 가독성 높고 친근하게 작성해 주세요.
         """
 
         try:
-            # 호환성과 동작이 안정적인 gemini-1.5-flash 모델 적용
-            model = genai.GenerativeModel("gemini-1.5-flash")
-            response = model.generate_content(f"{system_instruction}\n\n사용자 메시지: {prompt}")
-            
+            # 2. 안정적인 gemini-2.0-flash 모델 설정
+            model = genai.GenerativeModel(
+                model_name="gemini-2.0-flash",
+                system_instruction=system_instruction
+            )
+
+            # 3. 누적된 대화 내역을 API 포맷(user/model)으로 변환
+            history = []
+            for msg in st.session_state.messages[:-1]:  # 마지막 사용자 메시지 제외
+                role = "user" if msg["role"] == "user" else "model"
+                history.append({"role": role, "parts": [msg["content"]]})
+
+            # 4. 세션 기반 대화 수행 (이전 대화 맥락 유지)
+            chat = model.start_chat(history=history)
+            response = chat.send_message(prompt)
+
             bot_response = response.text
             message_placeholder.markdown(bot_response)
             st.session_state.messages.append({"role": "assistant", "content": bot_response})
