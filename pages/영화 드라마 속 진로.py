@@ -1,7 +1,9 @@
 import os
 import streamlit as st
 
+# ---------------------------------------------------------
 # 페이지 기본 설정
+# ---------------------------------------------------------
 st.set_page_config(
     page_title="영화 및 드라마 속 진로 탐색기",
     layout="wide"
@@ -40,7 +42,7 @@ st.markdown("""
         margin-bottom: 1.8rem;
     }
     
-    /* 포스터 이미지 프레임 - 세로형 포스터 비율 최적화 */
+    /* 포스터 이미지 프레임 (세로형 포스터 비율 최적화) */
     .poster-frame img {
         border-radius: 14px !important;
         box-shadow: 0 12px 24px rgba(30, 58, 138, 0.22) !important;
@@ -108,7 +110,7 @@ if "search_term" not in st.session_state:
 POPULAR_JOBS = ["변호사", "의사", "교사", "경찰관", "소방관"]
 
 # ---------------------------------------------------------
-# TMDB 정식 고화질 포스터 & 풍부한 텍스트 데이터베이스
+# 데이터베이스 (TMDB CDN 공식 포스터 & 상세 가이드)
 # ---------------------------------------------------------
 CAREER_DATABASE = {
     # --- 교사 계열 ---
@@ -178,7 +180,7 @@ CAREER_DATABASE = {
         "co_careers": {"응급구조사": "현장에서 환자 응급 처치 후 이송을 전담하는 전문가", "외상외과 의사": "중증 외상 수술을 전문적으로 집도하는 의사"}
     },
 
-    # --- 기존 대표 직업 ---
+    # --- 대표 주요 직업군 ---
     "변호사": {
         "group": "변호사",
         "title": "이상한 변호사 우영우",
@@ -224,8 +226,6 @@ CAREER_DATABASE = {
         "career_info": "소프트웨어 개발자는 프로그래밍 언어로 어플리케이션, 시스템, 웹 서비스를 기획하고 구현하는 기술자입니다. 논리적 사고와 지속적인 학습 능력이 필요합니다.",
         "co_careers": {"UI/UX 디자이너": "화면 인터페이스 설계자", "데이터 엔지니어": "데이터 파이프라인 구축 전문가"}
     },
-
-    # --- 추가 직업 10개 ---
     "건축가": {
         "group": "건축가",
         "title": "건축학개론",
@@ -290,6 +290,7 @@ CAREER_DATABASE = {
         "co_careers": {"지상직 승무원": "공항 내 체크인 카운터 업무를 담당하는 수속 전문가", "기내식 기획자": "기내식을 개발하고 연출하는 푸드 전문가"}
     },
     "프로게이머": {
+        "group": "프로게이머",
         "title": "취시광연적니",
         "type": "드라마",
         "poster": "https://image.tmdb.org/t/p/w500/542751371adc38448a05e.jpg",
@@ -419,3 +420,63 @@ if st.session_state.search_term:
                         for c_idx, (co_job, co_desc) in enumerate(data["co_careers"].items()):
                             with co_cols[c_idx]:
                                 with st.expander(f"**{co_job}**", expanded=True):
+                                    st.write(co_desc)
+
+        # 매칭된 직업이 1개일 경우 바로 단일 출력
+        else:
+            job_name, data = list(matched_items.items())[0]
+            col_poster, col_info = st.columns([1, 1.6])
+            
+            with col_poster:
+                st.markdown('<div class="poster-frame">', unsafe_allow_html=True)
+                st.image(data["poster"], use_container_width=True, caption=f"[{data['type']}] {data['title']} 공식 포스터")
+                st.markdown('</div>', unsafe_allow_html=True)
+                
+            with col_info:
+                st.markdown(f"<h1>{data['title']}</h1>", unsafe_allow_html=True)
+                
+                st.markdown(f"""
+                <div class="info-card">
+                    <div class="card-title">작품 상세 줄거리</div>
+                    <div class="card-text">{data["summary"]}</div>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                st.markdown(f"""
+                <div class="info-card">
+                    <div class="card-title">진로 및 직업 상세 가이드 ({job_name})</div>
+                    <div class="card-text">{data["career_info"]}</div>
+                </div>
+                """, unsafe_allow_html=True)
+
+            if "co_careers" in data and data["co_careers"]:
+                st.write("")
+                st.markdown(f"### [{data['title']}] 속 연관 직업 정보")
+                co_cols = st.columns(len(data["co_careers"]))
+                for c_idx, (co_job, co_desc) in enumerate(data["co_careers"].items()):
+                    with co_cols[c_idx]:
+                        with st.expander(f"**{co_job}**", expanded=True):
+                            st.write(co_desc)
+
+    else:
+        # DB 미등록 키워드일 경우 Gemini AI 호출
+        st.info(f"등록된 미디어 데이터 기반으로 분석 가이드를 생성 중입니다.")
+        with st.spinner("정보 분석 및 가이드 생성 중..."):
+            ai_result, error = get_gemini_recommendation(search_query)
+            if error:
+                st.error(error)
+            elif ai_result:
+                col_poster, col_info = st.columns([1, 1.6])
+                with col_poster:
+                    st.image(
+                        "https://image.tmdb.org/t/p/w500/zI3e226L0aG21oD2I1I4wG38f71.jpg",
+                        caption=f"{search_query} 관련 미디어",
+                        use_container_width=True
+                    )
+                with col_info:
+                    st.markdown(f"<h1>AI 가이드 분석: {search_query}</h1>", unsafe_allow_html=True)
+                    st.markdown(f"""
+                    <div class="info-card">
+                        <div class="card-text">{ai_result}</div>
+                    </div>
+                    """, unsafe_allow_html=True)
