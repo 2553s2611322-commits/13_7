@@ -280,14 +280,14 @@ if prompt := st.chat_input("답변이나 궁금한 점을 여기에 입력하세
         {profile_summary}
         
         [지침]
-        - 사용자가 제공한 답변과 정보(성향, 관심사, 답변 내용 등)를 바탕으로 선택된 옵션 [{st.session_state.selected_mode}]에 맞는 전문적인 분석과 답변을 구체적으로 제공하세요.
-        - 정보가 다소 부족하더라도 지금까지 들어온 정보 안에서 최고 수준의 맞춤 추천 및 조언을 제공한 뒤, 필요하다면 추가로 안내해 주세요.
+        - 사용자가 사이드바에 입력한 프로필(MBTI, 관심사, 강점)과 채팅으로 보내준 정보(답변)를 모두 결합하여 종합적으로 분석해 주세요.
+        - 선택된 옵션 [{st.session_state.selected_mode}]에 맞춰 관련 높은 학과, 직업, 진로 방향을 추천하고 이유를 명확하게 설명해 주세요.
         - 답변은 이모지와 마크다운을 활용해 밝고 다정하게 가독성 높게 작성해 주세요.
         """
 
         try:
-            # google-generativeai 패키지 방식 호출 (gemini-2.5-flash)
-            model = genai.GenerativeModel("gemini-2.5-flash")
+            # 호환성과 동작이 안정적인 gemini-1.5-flash 모델 적용
+            model = genai.GenerativeModel("gemini-1.5-flash")
             response = model.generate_content(f"{system_instruction}\n\n사용자 메시지: {prompt}")
             
             bot_response = response.text
