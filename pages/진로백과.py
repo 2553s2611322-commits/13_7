@@ -1,10 +1,8 @@
 
 import streamlit as st
-import html
-from urllib.parse import quote_plus
 
 st.title("📚 진로백과")
-st.caption("관심 분야의 책을 찾아보며 나에게 맞는 진로를 탐색해 보세요.")
+st.caption("관심 분야의 책을 찾아 나에게 맞는 진로를 탐색해 보세요.")
 
 st.markdown("""
 <style>
@@ -15,49 +13,35 @@ st.markdown("""
     background: white;
     border: 1px solid #e8e1f3;
     border-radius: 18px;
-    padding: 15px;
-    min-height: 370px;
-    box-shadow: 0 4px 14px rgba(70, 50, 100, 0.07);
-}
-.cover {
-    height: 190px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    overflow: hidden;
-    background: #f8f4ff;
-    border-radius: 12px;
-}
-.cover img {
-    max-height: 190px;
-    max-width: 100%;
-    object-fit: contain;
+    padding: 18px;
+    min-height: 185px;
+    box-shadow: 0 4px 14px rgba(70,50,100,.06);
 }
 .book-title {
-    font-size: 17px;
+    font-size: 18px;
     font-weight: 700;
     color: #37304b;
-    margin-top: 12px;
+    margin-top: 8px;
 }
 .book-author {
-    font-size: 13px;
     color: #77718b;
-    margin-top: 5px;
+    font-size: 13px;
+    margin-top: 6px;
 }
 .book-desc {
-    font-size: 13px;
     color: #514d61;
-    margin-top: 10px;
+    font-size: 14px;
+    margin-top: 12px;
 }
 </style>
 """, unsafe_allow_html=True)
 
-# 앱 내부 데이터만 검색하므로 도서 검색 API 호출이 없습니다.
+# (책 제목, 저자, 분야, 설명)
 BOOKS = [
     ("AI 최강의 수업", "김진형", "IT·인공지능", "인공지능의 핵심 개념과 활용"),
     ("혼자 공부하는 머신러닝+딥러닝", "박해선", "IT·인공지능", "머신러닝과 딥러닝 입문"),
     ("Do it! 점프 투 파이썬", "박응용", "IT·인공지능", "파이썬 프로그래밍 입문"),
-    ("클린 코드", "로버트 C. 마틴", "IT·인공지능", "읽기 쉬운 코드를 작성하는 방법"),
+    ("클린 코드", "로버트 C. 마틴", "IT·인공지능", "읽기 쉬운 코드 작성법"),
     ("밑바닥부터 시작하는 딥러닝", "사이토 고키", "IT·인공지능", "딥러닝의 작동 원리"),
     ("이기적 유전자", "리처드 도킨스", "의학·생명과학", "유전자와 진화"),
     ("랩 걸", "호프 자런", "의학·생명과학", "식물학자의 연구와 성장"),
@@ -104,19 +88,27 @@ if "career_favorites" not in st.session_state:
 tab_search, tab_favorites = st.tabs(["🔎 도서 찾기", "💜 관심 도서"])
 
 with tab_search:
-    selected_field = st.selectbox("관심 분야", ["전체 분야"] + FIELDS)
-    query = st.text_input("책 제목 또는 저자 검색", placeholder="예: 인공지능, 심리학")
+    st.subheader("나에게 맞는 진로 도서 찾기")
 
-    results = []
-    for book in BOOKS:
-        title, author, field, desc = book
-        if selected_field != "전체 분야" and field != selected_field:
-            continue
-        if query.strip() and query.strip().casefold() not in (
-            title + " " + author + " " + field + " " + desc
-        ).casefold():
-            continue
-        results.append(book)
+    selected_field = st.selectbox(
+        "관심 분야",
+        ["전체 분야"] + FIELDS
+    )
+    query = st.text_input(
+        "책 제목 또는 저자 검색",
+        placeholder="예: 인공지능, 심리학, 김진형"
+    ).strip().casefold()
+
+    results = [
+        book for book in BOOKS
+        if (selected_field == "전체 분야" or book[2] == selected_field)
+        and (
+            not query
+            or query in (
+                book[0] + " " + book[1] + " " + book[2] + " " + book[3]
+            ).casefold()
+        )
+    ]
 
     st.caption(f"검색 결과 {len(results)}권")
 
@@ -125,45 +117,32 @@ with tab_search:
 
     for start in range(0, len(results), 3):
         cols = st.columns(3)
+
         for col, book in zip(cols, results[start:start + 3]):
             title, author, field, desc = book
-
-            # 제목으로 표지를 조회합니다. 검색 API를 호출하지 않습니다.
-            cover_url = (
-                "https://covers.openlibrary.org/b/title/"
-                + quote_plus(title)
-                + "-M.jpg?default=false"
-            )
-            safe_title = html.escape(title)
-            safe_author = html.escape(author)
-            safe_field = html.escape(field)
-            safe_desc = html.escape(desc)
+            key = title + "|" + author
 
             with col:
                 st.markdown(
                     f"""
                     <div class="book-card">
-                      <div class="cover">
-                        <img src="{cover_url}" alt="{safe_title} 표지">
-                      </div>
-                      <div style="color:#9076ba;font-size:12px;margin-top:10px">
-                        📖 {safe_field}
-                      </div>
-                      <div class="book-title">{safe_title}</div>
-                      <div class="book-author">저자: {safe_author}</div>
-                      <div class="book-desc">{safe_desc}</div>
+                        <div style="font-size:12px;color:#9076ba;">
+                            📖 {field}
+                        </div>
+                        <div class="book-title">{title}</div>
+                        <div class="book-author">저자: {author}</div>
+                        <div class="book-desc">{desc}</div>
                     </div>
                     """,
-                    unsafe_allow_html=True,
+                    unsafe_allow_html=True
                 )
 
-                key = title + "|" + author
                 saved = key in st.session_state.career_favorites
 
                 if st.button(
                     "💜 저장 해제" if saved else "♡ 관심 도서 저장",
-                    key="favorite_" + str(start) + "_" + key,
-                    use_container_width=True,
+                    key=f"fav_{start}_{key}",
+                    use_container_width=True
                 ):
                     if saved:
                         st.session_state.career_favorites.remove(key)
@@ -172,14 +151,16 @@ with tab_search:
                     st.rerun()
 
                 st.link_button(
-                    "🔗 책 정보 보기",
+                    "🔎 책 정보 보기",
                     "https://www.google.com/search?q="
-                    + quote_plus(title + " " + author + " 책"),
-                    use_container_width=True,
+                    + title.replace(" ", "+")
+                    + "+책",
+                    use_container_width=True
                 )
 
 with tab_favorites:
     st.subheader("💜 관심 도서 목록")
+
     saved_books = [
         book for book in BOOKS
         if book[0] + "|" + book[1] in st.session_state.career_favorites
@@ -191,7 +172,8 @@ with tab_favorites:
         for title, author, field, desc in saved_books:
             with st.container(border=True):
                 st.markdown(f"### 📚 {title}")
-                st.write(f"저자: {author} · 분야: {field}")
+                st.write(f"저자: {author}")
+                st.write(f"분야: {field}")
                 st.write(desc)
 
                 if st.button("저장 취소", key="remove_" + title + author):
@@ -199,7 +181,4 @@ with tab_favorites:
                     st.rerun()
 
 st.divider()
-st.caption(
-    "도서 검색은 앱 내부 목록에서 실행됩니다. "
-    "표지는 외부 이미지 서비스에 등록된 경우에만 표시될 수 있습니다."
-)
+st.caption("앱 내부 도서 목록으로 검색하므로 도서 검색 API 요청 한도 오류가 발생하지 않습니다.")
