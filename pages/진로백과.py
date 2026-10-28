@@ -1,7 +1,8 @@
 
-import streamlit as st
+import re
 import requests
-from urllib.parse import quote
+import streamlit as st
+from html import unescape
 
 st.set_page_config(
     page_title="진로백과",
@@ -9,35 +10,42 @@ st.set_page_config(
     layout="wide"
 )
 
-API_URL = "https://openlibrary.org/search.json"
-
 st.markdown("""
 <style>
 .stApp {
     background: linear-gradient(135deg, #fff9f2, #f4f2ff);
+}
+.main .block-container {
+    max-width: 1200px;
+    padding-top: 2rem;
 }
 .book-card {
     background: white;
     border: 1px solid #e8e1f3;
     border-radius: 18px;
     padding: 16px;
-    min-height: 190px;
-    box-shadow: 0 4px 14px rgba(70,50,100,.06);
+    margin-bottom: 12px;
+    min-height: 310px;
+    box-shadow: 0 4px 12px rgba(70, 50, 100, 0.05);
 }
 .book-title {
     font-size: 17px;
     font-weight: 700;
-    color: #37304b;
-    margin: 10px 0 6px 0;
+    color: #403451;
+    margin-bottom: 8px;
 }
 .book-info {
-    color: #77718b;
     font-size: 13px;
+    color: #777080;
+    margin-bottom: 8px;
 }
 .book-desc {
-    color: #514d61;
     font-size: 13px;
-    margin-top: 10px;
+    color: #514b5b;
+    line-height: 1.5;
+}
+.stButton button {
+    border-radius: 12px;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -45,326 +53,268 @@ st.markdown("""
 st.title("📚 진로백과")
 st.caption("관심 분야의 책을 찾아 나에게 맞는 진로를 탐색해 보세요.")
 
-# 분야별 검색어
 FIELDS = {
-    "IT·인공지능": (
-        "subject:computers OR subject:programming "
-        "OR subject:artificial_intelligence "
-        "OR subject:machine_learning"
-    ),
-    "의학·생명과학": (
-        "subject:biology OR subject:medicine "
-        "OR subject:genetics OR subject:health"
-    ),
-    "심리·상담": (
-        "subject:psychology OR subject:psychiatry "
-        "OR subject:counseling"
-    ),
-    "법·정치·사회": (
-        "subject:law OR subject:politics "
-        "OR subject:sociology OR subject:social_sciences"
-    ),
-    "교육·언어": (
-        "subject:education OR subject:linguistics "
-        "OR subject:language OR subject:writing"
-    ),
-    "예술·디자인": (
-        "subject:art OR subject:design "
-        "OR subject:painting OR subject:photography"
-    ),
-    "환경·공학": (
-        "subject:engineering OR subject:environment "
-        "OR subject:ecology OR subject:technology"
-    ),
-    "요리·서비스·체육": (
-        "subject:cooking OR subject:food "
-        "OR subject:sports OR subject:fitness"
-    ),
-    "경제·경영": (
-        "subject:economics OR subject:business "
-        "OR subject:management OR subject:finance"
-    )
+    "IT · 인공지능": ["인공지능", "컴퓨터 프로그래밍", "코딩"],
+    "의료 · 생명과학": ["의학", "생명과학", "간호학"],
+    "심리 · 상담": ["심리학", "상담심리", "청소년 심리"],
+    "법 · 정치 · 사회": ["법학", "정치학", "사회학"],
+    "교육 · 언어": ["교육학", "언어학", "국어교육"],
+    "예술 · 디자인": ["디자인", "미술", "시각디자인"],
+    "환경 · 공학": ["환경공학", "공학", "기후변화"],
+    "경제 · 경영": ["경제학", "경영학", "마케팅"],
+    "요리 · 서비스 · 스포츠": ["요리", "호텔관광", "스포츠과학"],
 }
 
-ALL_QUERY = " OR ".join(
-    f"({value})" for value in FIELDS.values()
-)
+if "favorites" not in st.session_state:
+    st.session_state.favorites = {}
 
-# API 호출: 한 페이지에 최대 100권
+if "results" not in st.session_state:
+    st.session_state.results = []
+
+if "last_search" not in st.session_state:
+    st.session_state.last_search = ""
+
+def has_korean(text):
+    return bool(re.search(r"[가-힣]", text or ""))
+
+def clean_text(text):
+    text = re.sub(r"<[^>]*>", "", text or "")
+    return unescape(text).strip()
+
 @st.cache_data(ttl=3600, show_spinner=False)
-def search_books(field, keyword, page):
-    query = FIELDS.get(field, ALL_QUERY)
+def search_google_books(search_term, max_books=100):
+    """Google Books에서 한국어 도서 정보를 검색한다."""
+    url = "https://www.googleapis.com/books/v1/volumes"
+    found = []
+    seen = set()
 
-    if keyword.strip():
-        query = f"({query}) AND ({keyword.strip()})"
-
-    params = {
-        "q": query,
-        "limit": 100,
-        "offset": page * 100,
-        "lang": "ko",
-        "fields": (
-            "key,title,author_name,first_publish_year,"
-            "cover_i,subject,edition_count"
-        )
-    }
-
-    response = requests.get(
-        API_URL,
-        params=params,
-        timeout=25,
-        headers={
-            "User-Agent": "CareerEncyclopedia/1.0 (school project)"
+    # Google Books는 한 요청에 최대 40개까지 반환한다.
+    for start in range(0, 120, 40):
+        params = {
+            "q": search_term,
+            "langRestrict": "ko",
+            "printType": "books",
+            "maxResults": 40,
+            "startIndex": start,
+            "orderBy": "relevance",
         }
-    )
-    response.raise_for_status()
-    data = response.json()
 
-    return data.get("docs", []), data.get("num_found", 0)
-
-
-# 관심 도서
-if "career_favorites" not in st.session_state:
-    st.session_state.career_favorites = {}
-
-if "book_page" not in st.session_state:
-    st.session_state.book_page = 0
-
-tab_search, tab_favorites = st.tabs(
-    ["🔎 도서 찾기", "💜 관심 도서"]
-)
-
-with tab_search:
-    st.subheader("나에게 맞는 진로 도서 찾기")
-
-    selected_field = st.selectbox(
-        "관심 분야",
-        ["전체 분야"] + list(FIELDS.keys())
-    )
-
-    keyword = st.text_input(
-        "책 제목 또는 저자 검색",
-        placeholder="예: 인공지능, 심리학, biology"
-    ).strip()
-
-    # 분야나 검색어가 바뀌면 첫 페이지부터 검색
-    current_search = (selected_field, keyword)
-
-    if st.session_state.get("last_search") != current_search:
-        st.session_state.book_page = 0
-        st.session_state.last_search = current_search
-
-    if st.button("🔎 도서 검색", use_container_width=True):
-        st.session_state.book_page = 0
-
-    page = st.session_state.book_page
-
-    try:
-        with st.spinner("도서 정보를 불러오는 중..."):
-            books, total = search_books(
-                selected_field,
-                keyword,
-                page
+        try:
+            response = requests.get(
+                url,
+                params=params,
+                timeout=15
             )
-
-        # 제목과 저자가 같은 결과 중복 제거
-        unique_books = []
-        seen = set()
-
-        for book in books:
-            title = book.get("title", "").strip()
-            authors = book.get("author_name", [])
-            author = ", ".join(authors) if authors else "저자 정보 없음"
-            identity = (title.casefold(), author.casefold())
-
-            if title and identity not in seen:
-                seen.add(identity)
-                unique_books.append(book)
-
-        st.caption(
-            f"검색 결과 약 {total:,}건 · "
-            f"{page + 1}페이지 · 현재 {len(unique_books)}권"
-        )
-
-        if not unique_books:
-            st.info(
-                "검색 결과가 없어요. 다른 검색어나 분야를 선택해 보세요."
-            )
-
-        for start in range(0, len(unique_books), 3):
-            cols = st.columns(3)
-
-            for col, book in zip(
-                cols, unique_books[start:start + 3]
-            ):
-                title = book.get("title", "제목 없음")
-                authors = book.get("author_name", [])
-                author = (
-                    ", ".join(authors)
-                    if authors else "저자 정보 없음"
+            response.raise_for_status()
+            data = response.json()
+        except requests.RequestException:
+            if not found:
+                raise RuntimeError(
+                    "도서 검색 서버에 연결하지 못했어요. "
+                    "잠시 후 다시 시도해 주세요."
                 )
-                year = book.get("first_publish_year")
-                cover_id = book.get("cover_i")
-                book_key = book.get("key", "")
-                subjects = book.get("subject", [])
-                description = (
-                    ", ".join(subjects[:3])
-                    if subjects else "상세 설명이 등록되지 않은 도서입니다."
+            break
+        except ValueError:
+            if not found:
+                raise RuntimeError(
+                    "도서 검색 결과를 읽지 못했어요. 다시 시도해 주세요."
                 )
+            break
 
-                # 도서 식별용 키
-                identity = book_key or f"{title}|{author}"
+        items = data.get("items", [])
+        if not items:
+            break
 
-                with col:
-                    st.markdown('<div class="book-card">',
-                                unsafe_allow_html=True)
+        for item in items:
+            info = item.get("volumeInfo", {})
+            title = clean_text(info.get("title", ""))
 
-                    if cover_id:
-                        st.image(
-                            f"https://covers.openlibrary.org/b/id/{cover_id}-M.jpg",
-                            width=150
-                        )
-                    else:
-                        st.markdown("📖 표지 이미지 없음")
+            # 실제 검색 결과 중 한국어 제목이 있는 책만 표시
+            if not title or not has_korean(title):
+                continue
 
-                    st.markdown(
-                        f'<div class="book-title">{title}</div>',
-                        unsafe_allow_html=True
-                    )
-                    st.markdown(
-                        f'<div class="book-info">저자: {author}</div>',
-                        unsafe_allow_html=True
-                    )
+            if info.get("language") not in (None, "ko"):
+                continue
 
-                    if year:
-                        st.caption(f"최초 출판 연도: {year}")
+            book_id = item.get("id", "")
+            isbn = ""
+            for identifier in info.get("industryIdentifiers", []):
+                if identifier.get("type") in ("ISBN_13", "ISBN_10"):
+                    isbn = identifier.get("identifier", "")
+                    break
 
-                    st.markdown(
-                        f'<div class="book-desc">{description}</div>',
-                        unsafe_allow_html=True
-                    )
-                    st.markdown("</div>", unsafe_allow_html=True)
+            unique_key = isbn or book_id or title
+            if unique_key in seen:
+                continue
+            seen.add(unique_key)
 
-                    saved = identity in st.session_state.career_favorites
+            image = info.get("imageLinks", {}).get("thumbnail", "")
+            if image:
+                image = image.replace("http://", "https://")
 
-                    if st.button(
-                        "💜 저장 해제" if saved else "♡ 관심 도서 저장",
-                        key=f"fav_{page}_{start}_{identity}",
-                        use_container_width=True
-                    ):
-                        if saved:
-                            del st.session_state.career_favorites[identity]
-                        else:
-                            st.session_state.career_favorites[identity] = {
-                                "title": title,
-                                "author": author,
-                                "field": selected_field,
-                                "year": year,
-                                "key": book_key,
-                                "cover_id": cover_id,
-                                "description": description
-                            }
-                        st.rerun()
+            description = clean_text(info.get("description", ""))
+            if len(description) > 220:
+                description = description[:220] + "..."
 
-                    if book_key:
-                        book_url = "https://openlibrary.org" + book_key
-                    else:
-                        book_url = (
-                            "https://openlibrary.org/search?q="
-                            + quote(title)
-                        )
+            found.append({
+                "id": book_id or unique_key,
+                "title": title,
+                "authors": ", ".join(info.get("authors", [])) or "저자 정보 없음",
+                "publisher": info.get("publisher", "출판사 정보 없음"),
+                "published": info.get("publishedDate", ""),
+                "description": description or "책 소개가 등록되어 있지 않습니다.",
+                "image": image,
+                "link": info.get(
+                    "infoLink",
+                    "https://books.google.com/"
+                ),
+                "isbn": isbn,
+            })
 
-                    st.link_button(
-                        "🔎 책 정보 보기",
-                        book_url,
-                        use_container_width=True
-                    )
+            if len(found) >= max_books:
+                return found
 
-        st.divider()
+        if len(items) < 40:
+            break
 
-        previous_col, page_col, next_col = st.columns([1, 2, 1])
+    return found
 
-        with previous_col:
-            if st.button(
-                "⬅️ 이전",
-                disabled=(page == 0),
-                use_container_width=True
-            ):
-                st.session_state.book_page -= 1
-                st.rerun()
 
-        with page_col:
-            st.markdown(
-                f"<div style='text-align:center;padding:8px'>"
-                f"{page + 1} 페이지</div>",
-                unsafe_allow_html=True
-            )
+def show_book(book, index, prefix):
+    with st.container(border=True):
+        left, right = st.columns([1, 2])
 
-        with next_col:
-            has_next = (page + 1) * 100 < total
+        with left:
+            if book.get("image"):
+                st.image(book["image"], use_container_width=True)
+            else:
+                st.markdown("📖 **표지 이미지 없음**")
 
-            if st.button(
-                "다음 ➡️",
-                disabled=not has_next,
-                use_container_width=True
-            ):
-                st.session_state.book_page += 1
-                st.rerun()
+        with right:
+            st.markdown(f"**{book['title']}**")
+            st.caption(f"저자: {book['authors']}")
+            st.caption(f"출판사: {book['publisher']}")
 
-    except requests.RequestException:
-        st.error(
-            "도서 API에 연결하지 못했어요. "
-            "인터넷 연결을 확인하고 잠시 후 다시 시도해 주세요."
-        )
-    except (ValueError, KeyError):
-        st.error("도서 정보를 처리하는 중 문제가 발생했어요.")
-
-with tab_favorites:
-    st.subheader("💜 관심 도서 목록")
-
-    favorites = list(st.session_state.career_favorites.items())
-
-    if not favorites:
-        st.info(
-            "아직 저장한 책이 없어요. "
-            "도서 찾기에서 관심 도서를 저장해 보세요."
-        )
-
-    for identity, book in favorites:
-        with st.container(border=True):
-            cover_id = book.get("cover_id")
-
-            if cover_id:
-                st.image(
-                    f"https://covers.openlibrary.org/b/id/{cover_id}-M.jpg",
-                    width=100
-                )
-
-            st.markdown(f"### 📚 {book['title']}")
-            st.write(f"저자: {book['author']}")
-            st.write(f"분야: {book['field']}")
-
-            if book.get("year"):
-                st.write(f"최초 출판 연도: {book['year']}")
+            if book.get("published"):
+                st.caption(f"출판일: {book['published']}")
 
             st.write(book["description"])
 
-            book_key = book.get("key", "")
-            if book_key:
-                st.link_button(
-                    "책 정보 보기",
-                    "https://openlibrary.org" + book_key
-                )
+            st.link_button(
+                "도서 정보 보기",
+                book["link"],
+                use_container_width=True
+            )
 
-            if st.button(
-                "저장 취소",
-                key=f"remove_{identity}"
-            ):
-                del st.session_state.career_favorites[identity]
-                st.rerun()
+            book_id = book["id"]
+            is_saved = book_id in st.session_state.favorites
 
-st.divider()
-st.caption(
-    "도서 정보 제공: Open Library API · "
-    "검색 결과와 표지 제공 여부는 데이터베이스에 따라 달라질 수 있습니다."
-)
+            if is_saved:
+                if st.button(
+                    "💜 찜 목록에서 삭제",
+                    key=f"{prefix}_remove_{index}_{book_id}",
+                    use_container_width=True
+                ):
+                    del st.session_state.favorites[book_id]
+                    st.rerun()
+            else:
+                if st.button(
+                    "🤍 찜하기",
+                    key=f"{prefix}_save_{index}_{book_id}",
+                    use_container_width=True
+                ):
+                    st.session_state.favorites[book_id] = book
+                    st.rerun()
+
+
+search_tab, favorite_tab = st.tabs(["🔎 분야별 책 찾기", "💜 찜한 책"])
+
+with search_tab:
+    selected_field = st.selectbox(
+        "진로 분야를 선택하세요",
+        list(FIELDS.keys())
+    )
+
+    keyword = st.text_input(
+        "검색어 (선택)",
+        placeholder="예: 인공지능, 간호사, 심리학"
+    )
+
+    st.caption("검색 결과는 실제 도서 데이터에 따라 달라질 수 있어요.")
+
+    if st.button("📚 책 검색하기", type="primary", use_container_width=True):
+        st.session_state.results = []
+        st.session_state.last_search = ""
+
+        try:
+            with st.spinner("한국어 도서를 찾고 있어요..."):
+                if keyword.strip():
+                    # 입력한 검색어로 한국어 도서를 검색
+                    results = search_google_books(keyword.strip(), 100)
+                    search_label = keyword.strip()
+                else:
+                    # 분야별 여러 검색어로 검색한 뒤 중복 제거
+                    results = []
+                    seen_ids = set()
+
+                    for term in FIELDS[selected_field]:
+                        remaining = 100 - len(results)
+                        if remaining <= 0:
+                            break
+
+                        books = search_google_books(term, remaining)
+                        for book in books:
+                            if book["id"] not in seen_ids:
+                                seen_ids.add(book["id"])
+                                results.append(book)
+
+                            if len(results) >= 100:
+                                break
+
+                    search_label = selected_field
+
+                st.session_state.results = results
+                st.session_state.last_search = search_label
+
+        except RuntimeError as error:
+            st.error(str(error))
+        except Exception:
+            st.error(
+                "검색 중 예상하지 못한 문제가 생겼어요. "
+                "잠시 후 다시 시도해 주세요."
+            )
+
+    results = st.session_state.results
+
+    if results:
+        st.success(f"검색 결과 {len(results)}권")
+        for i in range(0, len(results), 2):
+            cols = st.columns(2)
+            for col, book_index in zip(cols, range(i, min(i + 2, len(results)))):
+                with col:
+                    show_book(results[book_index], book_index, "search")
+
+    elif st.session_state.last_search:
+        st.info(
+            "조건에 맞는 한국어 책을 찾지 못했어요. "
+            "다른 검색어를 입력해 보세요."
+        )
+    else:
+        st.info(
+            "분야를 선택하고 '책 검색하기'를 눌러 주세요. "
+            "검색어를 직접 입력해도 돼요."
+        )
+
+with favorite_tab:
+    favorites = list(st.session_state.favorites.values())
+
+    if not favorites:
+        st.info("아직 찜한 책이 없어요. 마음에 드는 책을 찜해 보세요!")
+    else:
+        st.write(f"💜 찜한 책 {len(favorites)}권")
+
+        for i in range(0, len(favorites), 2):
+            cols = st.columns(2)
+            for col, book_index in zip(cols, range(i, min(i + 2, len(favorites)))):
+                with col:
+                    show_book(favorites[book_index], book_index, "favorite")
