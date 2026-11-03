@@ -1,4 +1,3 @@
-
 import streamlit as st
 
 # ==========================================
@@ -44,7 +43,7 @@ st.markdown("""
     font-size: 16px;
 }
 
-.result-box {
+.center-card {
     background: white;
     padding: 20px;
     border-radius: 15px;
@@ -67,112 +66,161 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ==========================================
-# 3. 전국 공식 진로진학지원센터 정보
+# 3. 실제 서울 진로직업체험지원센터 데이터
 # ==========================================
 
-CENTERS = {
-    "서울특별시": {
-        "name": "서울 진로진학정보센터",
-        "url": "https://www.jinhak.or.kr",
-        "description": "서울 지역 진로 및 진학 정보 제공"
+CENTERS = [
+    {
+        "district": "강남구",
+        "name": "나래꿈터",
+        "address": "서울 강남구 논현로64길 7 역삼청소년센터 2층",
+        "phone": "02-550-3629"
     },
-
-    "부산광역시": {
-        "name": "부산 진로진학지원센터",
-        "url": "https://dream.pen.go.kr",
-        "description": "부산 지역 진로 및 진학 상담 지원"
+    {
+        "district": "강동구",
+        "name": "강동 미래온(ON)",
+        "address": "서울 강동구 구천면로 395 2층",
+        "phone": "02-481-7088"
     },
-
-    "대구광역시": {
-        "name": "대구 진로진학지원센터",
-        "url": "https://www.dge.go.kr/jinhak/main.do",
-        "description": "대구 지역 진로 및 진학 정보 제공"
+    {
+        "district": "강북구",
+        "name": "강북구 진로직업체험지원센터",
+        "address": "서울 강북구 삼양로51가길 22",
+        "phone": "02-6265-7640"
     },
-
-    "인천광역시": {
-        "name": "인천 진로진학지원센터",
-        "url": "https://cyberjinro.ice.go.kr/main",
-        "description": "인천 지역 진로 및 진학 정보 제공"
+    {
+        "district": "강서구",
+        "name": "강서 진로직업체험지원센터",
+        "address": "서울 강서구 양천로 542 기아 강서서비스센터 2층",
+        "phone": "02-2699-8724"
     },
-
-    "광주광역시": {
-        "name": "광주 진로진학지원센터",
-        "url": "http://jinhak.gen.go.kr",
-        "description": "광주 지역 진로 및 진학 상담 지원"
+    {
+        "district": "관악구",
+        "name": "관악 진로직업체험지원센터",
+        "address": "서울 관악구 남부순환로234길 73 싱글벙글교육센터 3층",
+        "phone": "02-873-8815"
     },
-
-    "대전광역시": {
-        "name": "대전 진로진학지원센터",
-        "url": "http://www.edurang.net/main.do?s=course",
-        "description": "대전 지역 진로 및 진학 정보 제공"
+    {
+        "district": "광진구",
+        "name": "광진해봄",
+        "address": "서울 광진구 구천면로 2 시립광진청소년센터",
+        "phone": "02-2204-3135"
     },
-
-    "울산광역시": {
-        "name": "울산 진로진학지원센터",
-        "url": "https://use.go.kr/jinhak/index.do",
-        "description": "울산 지역 진로 및 진학 상담 지원"
+    {
+        "district": "구로구",
+        "name": "구로 진로직업체험지원센터",
+        "address": "서울 구로구 가마산로25길 21 구로구민회관 2층",
+        "phone": "02-860-2881"
     },
-
-    "세종특별자치시": {
-        "name": "세종 진로진학지원센터",
-        "url": "https://jinro.sje.go.kr/home/main.do",
-        "description": "세종 지역 진로 및 진학 정보 제공"
+    {
+        "district": "금천구",
+        "name": "금천진로진학지원센터",
+        "address": "서울 금천구 문성로 38",
+        "phone": "02-2627-2823"
     },
-
-    "경기도": {
-        "name": "경기 진로진학지원센터",
-        "url": "https://more.goe.go.kr/jinhak/index.do",
-        "description": "경기도 지역 진로 및 진학 상담 지원"
+    {
+        "district": "노원구",
+        "name": "상상이룸센터",
+        "address": "서울 노원구 노해로 502 노원KT 신관 4층",
+        "phone": "02-936-3326"
     },
-
-    "강원특별자치도": {
-        "name": "강원 진로진학지원센터",
-        "url": "https://jinhak.gwe.go.kr",
-        "description": "강원 지역 진로 및 진학 정보 제공"
+    {
+        "district": "도봉구",
+        "name": "꿈여울",
+        "address": "서울 도봉구 도봉로 552 도봉구민회관 3층",
+        "phone": "02-2091-2343"
     },
-
-    "충청북도": {
-        "name": "충북 진로진학지원센터",
-        "url": "https://jinro.cbe.go.kr/home/main.php",
-        "description": "충북 지역 진로 및 진학 상담 지원"
+    {
+        "district": "동대문구",
+        "name": "와락",
+        "address": "서울 동대문구 답십리로38길 19 A동 3층",
+        "phone": "02-6238-2020"
     },
-
-    "충청남도": {
-        "name": "충남 진로진학지원센터",
-        "url": "https://icec.cne.go.kr/home/main.do?screenTp=USER",
-        "description": "충남 지역 진로 및 진학 정보 제공"
+    {
+        "district": "동작구",
+        "name": "동작구 진로직업체험지원센터",
+        "address": "서울 동작구 장승배기로 161 4층",
+        "phone": "02-815-3371"
     },
-
-    "전북특별자치도": {
-        "name": "전북 진로진학지원센터",
-        "url": "https://www.jbe.go.kr/jinro/index.jbe",
-        "description": "전북 지역 진로 및 진학 상담 지원"
+    {
+        "district": "마포구",
+        "name": "희망나래",
+        "address": "서울 마포구 성산로 128 마포중앙도서관 5층",
+        "phone": "02-322-2660"
     },
-
-    "전라남도": {
-        "name": "전남 진로진학지원센터",
-        "url": "https://www.jne.go.kr/jinro/main.do",
-        "description": "전남 지역 진로 및 진학 정보 제공"
+    {
+        "district": "서대문구",
+        "name": "서대문 진로직업체험지원센터",
+        "address": "서울 서대문구 포방터길 110 홍은청소년문화의집",
+        "phone": "02-395-1318"
     },
-
-    "경상북도": {
-        "name": "경북 진로진학지원센터",
-        "url": "https://www.gbe.kr/cheerup/main.do",
-        "description": "경북 지역 진로 및 진학 상담 지원"
+    {
+        "district": "서초구",
+        "name": "양재내곡교육지원센터",
+        "address": "서울 서초구 강남대로 190 대관빌딩 1층",
+        "phone": "02-574-0304"
     },
-
-    "경상남도": {
-        "name": "경남 진로진학지원센터",
-        "url": "https://gnce.gne.go.kr/gnce/main.do",
-        "description": "경남 지역 진로 및 진학 정보 제공"
+    {
+        "district": "성동구",
+        "name": "성동구 진로직업체험지원센터",
+        "address": "서울 성동구 고산자로 270 성동구청 2층",
+        "phone": "02-2286-6675"
     },
-
-    "제주특별자치도": {
-        "name": "제주 진로진학지원센터",
-        "url": "https://jinhak.jje.go.kr",
-        "description": "제주 지역 진로 및 진학 상담 지원"
+    {
+        "district": "성북구",
+        "name": "성북청소년미래지원센터",
+        "address": "서울 성북구 오패산로3길 87",
+        "phone": "02-2241-2400"
+    },
+    {
+        "district": "송파구",
+        "name": "꿈마루",
+        "address": "서울 송파구 마천로35길 12 송파구 평생학습원 1층",
+        "phone": "02-6713-2394"
+    },
+    {
+        "district": "양천구",
+        "name": "진로드림",
+        "address": "서울 양천구 목동동로 375 1층",
+        "phone": "02-2084-5414"
+    },
+    {
+        "district": "영등포구",
+        "name": "영등포 진로직업체험지원센터",
+        "address": "서울 영등포구 국회대로 596 영등포구민회관 3층",
+        "phone": "02-2636-6521"
+    },
+    {
+        "district": "용산구",
+        "name": "용산구 진로직업체험지원센터 미래야",
+        "address": "서울 용산구 한강대로 255 시립청소년미디어센터",
+        "phone": "070-7165-1023"
+    },
+    {
+        "district": "은평구",
+        "name": "은평구 진로직업체험지원센터",
+        "address": "서울 은평구 백련산로4길 16 은평청소년센터",
+        "phone": "070-7113-4994"
+    },
+    {
+        "district": "종로구",
+        "name": "종로구 진로직업체험지원센터",
+        "address": "서울 종로구 이화장길 81 한국방송통신대학교 열린관 3층",
+        "phone": "02-6956-1152"
+    },
+    {
+        "district": "중구",
+        "name": "중구 진로직업체험지원센터",
+        "address": "서울 중구 다산로33길 3 신당누리센터 4층",
+        "phone": "02-2250-0580"
+    },
+    {
+        "district": "중랑구",
+        "name": "중랑드림하이",
+        "address": "서울 중랑구 망우로325 방정환교육지원센터 4층",
+        "phone": "070-4304-4057"
     }
-}
+]
 
 # ==========================================
 # 4. 메인 화면
@@ -185,24 +233,48 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
+st.markdown("### 📍 내 주변 진로상담센터 검색")
+
 # ==========================================
 # 5. 지역 선택
 # ==========================================
 
-st.markdown("### 📍 내 주변 진로상담센터 검색")
-
-selected_region = st.selectbox(
-    "시·도",
-    list(CENTERS.keys()),
-    key="region_select"
+districts = ["전체"] + sorted(
+    [center["district"] for center in CENTERS]
 )
 
-st.info(
-    "지역을 선택하면 해당 지역의 공식 진로진학지원센터를 안내합니다."
+col1, col2 = st.columns(2)
+
+with col1:
+    selected_region = st.selectbox(
+        "시·도",
+        ["서울특별시"],
+        key="region_select"
+    )
+
+with col2:
+    selected_district = st.selectbox(
+        "시·군·구",
+        districts,
+        key="district_select"
+    )
+
+institution_type = st.selectbox(
+    "기관 유형",
+    [
+        "전체 진로상담기관",
+        "진로직업체험지원센터",
+        "진로진학지원센터"
+    ],
+    key="institution_type"
+)
+
+st.caption(
+    "서울시 25개 자치구의 진로·진학 관련 기관 정보를 제공합니다."
 )
 
 # ==========================================
-# 6. 검색 버튼
+# 6. 검색
 # ==========================================
 
 if st.button(
@@ -211,91 +283,80 @@ if st.button(
     use_container_width=True
 ):
 
-    st.session_state["search_region"] = selected_region
+    if selected_district == "전체":
+        results = CENTERS
+    else:
+        results = [
+            center for center in CENTERS
+            if center["district"] == selected_district
+        ]
+
+    st.session_state["search_results"] = results
+    st.session_state["search_district"] = selected_district
 
 # ==========================================
 # 7. 검색 결과
 # ==========================================
 
-if "search_region" in st.session_state:
+if "search_results" in st.session_state:
 
-    region = st.session_state["search_region"]
+    results = st.session_state["search_results"]
 
-    center = CENTERS.get(region)
+    if results:
 
-    if center:
-
-        st.success("공식 진로진학지원센터를 찾았습니다!")
-
-        st.markdown(
-            f"""
-            <div class="result-box">
-                <h3>🏫 {center["name"]}</h3>
-                <p><b>지역:</b> {region}</p>
-                <p><b>기관 유형:</b> 진로진학지원센터</p>
-                <p>{center["description"]}</p>
-            </div>
-            """,
-            unsafe_allow_html=True
+        st.success(
+            f"총 {len(results)}개의 진로상담센터를 찾았습니다."
         )
 
-        st.link_button(
-            "🌐 공식 홈페이지 방문하기",
-            center["url"],
-            use_container_width=True
-        )
+        for center in results:
 
-        st.caption(
-            "※ 홈페이지에서 상담 신청 방법과 운영 시간을 확인하세요."
+            st.markdown(
+                f"""
+                <div class="center-card">
+                    <h3>🏫 {center["name"]}</h3>
+                    <p><b>지역:</b> {center["district"]}</p>
+                    <p><b>주소:</b> {center["address"]}</p>
+                    <p><b>전화번호:</b> {center["phone"]}</p>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+
+            st.link_button(
+                "📍 지도에서 위치 확인하기",
+                "https://map.kakao.com/?q="
+                + center["address"],
+                use_container_width=True
+            )
+
+            st.markdown("")
+
+    else:
+
+        st.warning(
+            "선택한 지역에서 진로상담센터를 찾지 못했습니다."
         )
 
 # ==========================================
-# 8. 전국 센터 목록
+# 8. 공식 자료 출처
 # ==========================================
-
-with st.expander("📚 전국 진로진학지원센터 목록 보기"):
-
-    for region, center in CENTERS.items():
-
-        st.markdown(
-            f"**{region}** — {center['name']}"
-        )
-
-        st.markdown(
-            f"[공식 홈페이지 바로가기]({center['url']})"
-        )
-
-        st.markdown("---")
-
-# ==========================================
-# 9. 추가 진로상담 안내
-# ==========================================
-
-st.markdown("### 💬 추가 진로상담 안내")
-
-st.markdown("""
-전국의 진로·진학 관련 상담을 알아보고 싶다면
-아래 공식 서비스를 이용할 수 있습니다.
-""")
-
-st.link_button(
-    "🌱 커리어넷 진로정보",
-    "https://www.career.go.kr",
-    use_container_width=True
-)
-
-st.link_button(
-    "🎓 전국 진로진학지원센터 안내",
-    "https://hischool.go.kr/site/02/index.do",
-    use_container_width=True
-)
 
 st.markdown("---")
 
-st.caption(
-    "본 서비스는 전국 시·도교육청의 공식 진로진학지원센터 정보를 안내합니다."
+st.markdown("### 📚 공식 기관 정보")
+
+st.markdown("""
+센터의 주소와 전화번호는 서울 진로직업체험지원센터협의회의
+기관 안내를 참고하여 구성했습니다.
+""")
+
+st.link_button(
+    "서울 진로직업체험지원센터 공식 목록",
+    "https://seouljinro.or.kr/centers",
+    use_container_width=True
 )
 
 st.caption(
-    "센터별 상담 운영 여부와 신청 방법은 공식 홈페이지에서 확인해 주세요."
+    "※ 주소와 전화번호는 변경될 수 있습니다. "
+    "방문 전 기관에 연락하여 상담 가능 여부를 확인해 주세요."
 )
