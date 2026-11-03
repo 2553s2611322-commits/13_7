@@ -1,316 +1,457 @@
-import os
 import streamlit as st
-from google import genai
-from google.genai import types
-from google.genai.errors import APIError
+import requests
 
 # ==========================================
-# 1. 페이지 설정 및 디자인 스타일 (CSS)
+# 1. 페이지 설정
 # ==========================================
+
 st.set_page_config(
-    page_title="AI 진로 상담 - 너의 고민, AI와 함께",
-    page_icon="🤖",
-    layout="wide",
-    initial_sidebar_state="expanded"
+    page_title="내 주변 진로상담센터 찾기",
+    page_icon="📍",
+    layout="centered"
 )
 
-# Custom CSS - Streamlit 버전에 맞춰 옵션 버튼 카드 스타일링 복구
+# ==========================================
+# 2. 디자인 CSS
+# ==========================================
+
 st.markdown("""
 <style>
-    /* 전체 배경 */
-    .stApp {
-        background-color: #F8FAFC;
-    }
-    
-    /* 사이드바 스타일링 */
-    [data-testid="stSidebar"] {
-        background-color: #EEF2FF;
-        border-right: 1px solid #E2E8F0;
-    }
-    
-    /* 메인 타이틀 */
-    .app-header {
-        font-size: 1.8rem;
-        font-weight: 700;
-        color: #1E293B;
-        padding-bottom: 5px;
-    }
-    .app-subtitle {
-        font-size: 0.95rem;
-        color: #64748B;
-        margin-bottom: 20px;
-    }
+.stApp {
+    background-color: #F4F7FB;
+}
 
-    /* AI 인사말 박스 */
-    .ai-welcome-box {
-        background-color: #EFF6FF;
-        border: 1px solid #DBEAFE;
-        border-radius: 16px;
-        padding: 20px;
-        margin-bottom: 25px;
-        color: #1E3A8A;
-        font-size: 1.05rem;
-        line-height: 1.6;
-    }
+.main .block-container {
+    max-width: 900px;
+    padding-top: 2rem;
+}
 
-    /* 🔥 카드 버튼 디자인 및 크기 안정화 (숨김 문제 해결) */
-    .stButton > button {
-        width: 100% !important;
-        min-height: 90px !important;
-        border-radius: 16px !important;
-        border: 1px solid #E2E8F0 !important;
-        background-color: #FFFFFF !important;
-        font-weight: 600 !important;
-        font-size: 0.95rem !important;
-        color: #1E293B !important;
-        line-height: 1.4 !important;
-        transition: all 0.2s ease-in-out !important;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.02) !important;
-    }
+.header-box {
+    background: linear-gradient(120deg, #4388E8, #61C2B3);
+    padding: 35px 25px;
+    border-radius: 18px;
+    color: white;
+    margin-bottom: 20px;
+}
 
-    .stButton > button:hover {
-        transform: translateY(-2px) !important;
-        box-shadow: 0 6px 12px rgba(0,0,0,0.08) !important;
-        border-color: #93C5FD !important;
-        background-color: #F1F5F9 !important;
-    }
+.header-box h2 {
+    color: white;
+    font-size: 27px;
+}
 
-    /* 현재 선택된 모드 안내 바 */
-    .selected-mode-badge {
-        background-color: #E0E7FF;
-        color: #3730A3;
-        padding: 10px 16px;
-        border-radius: 12px;
-        font-weight: 600;
-        margin-bottom: 15px;
-        display: inline-block;
-    }
+.header-box p {
+    color: white;
+    font-size: 16px;
+}
 
-    /* 사이드바 하단 감성 문구 */
-    .sidebar-footer {
-        margin-top: 40px;
-        padding: 15px;
-        background-color: #E0E7FF;
-        border-radius: 12px;
-        color: #3730A3;
-        font-size: 0.9rem;
-        line-height: 1.5;
-        font-style: italic;
-    }
+.search-box {
+    background: white;
+    padding: 22px;
+    border-radius: 15px;
+    border: 1px solid #DDE3EC;
+}
+
+.result-box {
+    background: white;
+    padding: 20px;
+    border-radius: 15px;
+    border: 1px solid #DDE3EC;
+    margin-bottom: 12px;
+}
+
+.stButton > button {
+    border-radius: 10px;
+    min-height: 45px;
+    font-weight: 600;
+}
+
+.stButton > button[kind="primary"] {
+    background: linear-gradient(120deg, #4388E8, #61C2B3);
+    border: none;
+    color: white;
+}
 </style>
 """, unsafe_allow_html=True)
 
-# ==========================================
-# 2. Gemini API 클라이언트 초기화
-# ==========================================
-@st.cache_resource
-def get_genai_client():
-    api_key = None
-    if "GEMINI_API_KEY" in st.secrets:
-        api_key = st.secrets["GEMINI_API_KEY"]
-    elif "GEMINI_API_KEY" in os.environ:
-        api_key = os.environ["GEMINI_API_KEY"]
 
-    if not api_key:
-        return None
-    
+# ==========================================
+# 3. 지역 데이터
+# ==========================================
+
+REGIONS = {
+    "서울특별시": [
+        "전체", "강남구", "강동구", "강북구", "강서구",
+        "관악구", "광진구", "구로구", "금천구", "노원구",
+        "도봉구", "동대문구", "동작구", "마포구", "서대문구",
+        "서초구", "성동구", "성북구", "송파구", "양천구",
+        "영등포구", "용산구", "은평구", "종로구", "중구",
+        "중랑구"
+    ],
+
+    "부산광역시": [
+        "전체", "중구", "서구", "동구", "영도구",
+        "부산진구", "동래구", "남구", "북구", "해운대구",
+        "사하구", "금정구", "강서구", "연제구", "수영구",
+        "사상구", "기장군"
+    ],
+
+    "대구광역시": [
+        "전체", "중구", "동구", "서구", "남구",
+        "북구", "수성구", "달서구", "달성군", "군위군"
+    ],
+
+    "인천광역시": [
+        "전체", "중구", "동구", "미추홀구", "연수구",
+        "남동구", "부평구", "계양구", "서구", "강화군",
+        "옹진군"
+    ],
+
+    "광주광역시": [
+        "전체", "동구", "서구", "남구", "북구", "광산구"
+    ],
+
+    "대전광역시": [
+        "전체", "동구", "중구", "서구", "유성구", "대덕구"
+    ],
+
+    "울산광역시": [
+        "전체", "중구", "남구", "동구", "북구", "울주군"
+    ],
+
+    "세종특별자치시": [
+        "전체"
+    ],
+
+    "경기도": [
+        "전체", "수원시", "성남시", "의정부시", "안양시",
+        "부천시", "광명시", "평택시", "동두천시", "안산시",
+        "고양시", "과천시", "구리시", "남양주시", "오산시",
+        "시흥시", "군포시", "의왕시", "하남시", "용인시",
+        "파주시", "이천시", "안성시", "김포시", "화성시",
+        "광주시", "양주시", "포천시", "여주시", "연천군",
+        "가평군", "양평군"
+    ],
+
+    "강원특별자치도": [
+        "전체", "춘천시", "원주시", "강릉시", "동해시",
+        "태백시", "속초시", "삼척시", "홍천군", "횡성군",
+        "영월군", "평창군", "정선군", "철원군", "화천군",
+        "양구군", "인제군", "고성군", "양양군"
+    ],
+
+    "충청북도": [
+        "전체", "청주시", "충주시", "제천시", "보은군",
+        "옥천군", "영동군", "증평군", "진천군", "괴산군",
+        "음성군", "단양군"
+    ],
+
+    "충청남도": [
+        "전체", "천안시", "공주시", "보령시", "아산시",
+        "서산시", "논산시", "계룡시", "당진시", "금산군",
+        "부여군", "서천군", "청양군", "홍성군", "예산군",
+        "태안군"
+    ],
+
+    "전북특별자치도": [
+        "전체", "전주시", "군산시", "익산시", "정읍시",
+        "남원시", "김제시", "완주군", "진안군", "무주군",
+        "장수군", "임실군", "순창군", "고창군", "부안군"
+    ],
+
+    "전라남도": [
+        "전체", "목포시", "여수시", "순천시", "나주시",
+        "광양시", "담양군", "곡성군", "구례군", "고흥군",
+        "보성군", "화순군", "장흥군", "강진군", "해남군",
+        "영암군", "무안군", "함평군", "영광군", "장성군",
+        "완도군", "진도군", "신안군"
+    ],
+
+    "경상북도": [
+        "전체", "포항시", "경주시", "김천시", "안동시",
+        "구미시", "영주시", "영천시", "상주시", "문경시",
+        "경산시", "의성군", "청송군", "영양군", "영덕군",
+        "청도군", "고령군", "성주군", "칠곡군", "예천군",
+        "봉화군", "울진군", "울릉군"
+    ],
+
+    "경상남도": [
+        "전체", "창원시", "진주시", "통영시", "사천시",
+        "김해시", "밀양시", "거제시", "양산시", "의령군",
+        "함안군", "창녕군", "고성군", "남해군", "하동군",
+        "산청군", "함양군", "거창군", "합천군"
+    ],
+
+    "제주특별자치도": [
+        "전체", "제주시", "서귀포시"
+    ]
+}
+
+
+# ==========================================
+# 4. 카카오 API 키 확인
+# ==========================================
+
+def get_api_key():
     try:
-        return genai.Client(api_key=api_key)
-    except Exception as e:
-        st.error(f"GenAI 클라이언트 초기화 오류: {e}")
-        return None
+        return st.secrets.get("KAKAO_REST_API_KEY", "")
+    except Exception:
+        return ""
 
-client = get_genai_client()
 
 # ==========================================
-# 3. 세션 상태 (Session State) 초기화
+# 5. 실제 진로상담센터 검색
 # ==========================================
-if "messages" not in st.session_state:
-    st.session_state.messages = []
 
-if "selected_mode" not in st.session_state:
-    st.session_state.selected_mode = None
+def search_centers(region, district, api_key):
+
+    search_words = [
+        "진로진학지원센터",
+        "진로상담센터",
+        "진로교육지원센터"
+    ]
+
+    results = []
+    seen_ids = set()
+
+    headers = {
+        "Authorization": f"KakaoAK {api_key}"
+    }
+
+    if district == "전체":
+        location = region
+    else:
+        location = f"{region} {district}"
+
+    for word in search_words:
+
+        query = f"{location} {word}"
+
+        try:
+            response = requests.get(
+                "https://dapi.kakao.com/v2/local/search/keyword.json",
+                headers=headers,
+                params={
+                    "query": query,
+                    "size": 15,
+                    "page": 1
+                },
+                timeout=10
+            )
+
+            response.raise_for_status()
+
+            data = response.json()
+
+            for item in data.get("documents", []):
+
+                place_id = item.get("id")
+
+                if place_id in seen_ids:
+                    continue
+
+                name = item.get("place_name", "")
+
+                category = item.get("category_name", "")
+
+                # 진로·진학 관련 기관 위주로 표시
+                if not any(
+                    keyword in name + category
+                    for keyword in [
+                        "진로",
+                        "진학",
+                        "교육지원청"
+                    ]
+                ):
+                    continue
+
+                seen_ids.add(place_id)
+
+                results.append({
+                    "name": name,
+                    "address": (
+                        item.get("road_address_name")
+                        or item.get("address_name")
+                        or "주소 정보 없음"
+                    ),
+                    "phone": (
+                        item.get("phone")
+                        or "전화번호 정보 없음"
+                    ),
+                    "category": category,
+                    "url": item.get("place_url", "")
+                })
+
+        except requests.exceptions.Timeout:
+            st.warning("검색 시간이 초과되었습니다. 다시 시도해 주세요.")
+
+        except requests.exceptions.HTTPError:
+            st.error(
+                "카카오 API 인증에 실패했습니다. "
+                "REST API 키를 확인해 주세요."
+            )
+            return []
+
+        except requests.exceptions.RequestException:
+            st.error(
+                "인터넷 연결 또는 검색 서버에 문제가 발생했습니다."
+            )
+            return []
+
+        except ValueError:
+            st.error("검색 결과를 읽을 수 없습니다.")
+            return []
+
+    return results
+
 
 # ==========================================
-# 4. 사이드바 구성
+# 6. 메인 화면
 # ==========================================
-with st.sidebar:
-    st.markdown("### 🤖 AI 진로 상담")
-    st.caption("너의 고민, AI와 함께")
-    st.markdown("---")
 
-    # 새로운 상담 시작 버튼
-    if st.button("💬 처음부터 다시 상담하기", use_container_width=True):
-        st.session_state.messages = []
-        st.session_state.selected_mode = None
-        st.rerun()
-
-    st.markdown("---")
-    st.markdown("#### 👤 내 프로필 (선택 입력)")
-    st.caption("미리 입력해 두면 대화 시 자동 반영됩니다.")
-    mbti = st.selectbox("성격 유형 (MBTI)", [
-        "선택 안함", "INTJ", "INTP", "ENTJ", "ENTP",
-        "INFJ", "INFP", "ENFJ", "ENFP",
-        "ISTJ", "ISFJ", "ESTJ", "ESFJ",
-        "ISTP", "ISFP", "ESTP", "ESFP"
-    ])
-    interests = st.text_input("관심 분야 / 흥미", placeholder="예: IT, 경영, 미술, 생명과학")
-    strengths = st.text_input("강점 / 잘하는 과목", placeholder="예: 수학, 영어, 문제 해결력")
-
-    st.markdown("""
-    <div class="sidebar-footer">
-        🌱 <br>
-        지금의 고민이<br>
-        너의 더 멋진<br>
-        미래를 만들 거야 :)
-    </div>
-    """, unsafe_allow_html=True)
-
-profile_summary = f"""
-[사용자 기본 프로필]
-- MBTI: {mbti}
-- 관심 분야: {interests if interests else '대화 내용 참고'}
-- 강점/잘하는 과목: {strengths if strengths else '대화 내용 참고'}
-"""
-
-# ==========================================
-# 5. 메인 화면 헤더 및 API 키 검증
-# ==========================================
-st.markdown('<div class="app-header">🤖 AI 진로 상담</div>', unsafe_allow_html=True)
-st.markdown('<div class="app-subtitle">너의 고민, AI와 함께 나누어 보세요.</div>', unsafe_allow_html=True)
-
-if not client:
-    st.warning("⚠️ **GEMINI_API_KEY**가 설정되지 않았습니다. Secrets 설정을 확인해 주세요.")
-    st.stop()
-
-# AI 인사말 상자
 st.markdown("""
-<div class="ai-welcome-box">
-    <strong>🤖 안녕하세요! 저는 여러분의 진로를 함께 고민해주는 AI 상담사예요 😊</strong><br><br>
-    아래 버튼에서 어떤 상담을 받고 싶은지 메뉴를 먼저 선택해 주세요.<br>
-    선택 후 질문에 맞춰 자신의 이야기나 정보를 적어주시면 맞춤형 상담을 도와드릴게요!
+<div class="header-box">
+    <h2>내 꿈에 가까워지는<br>진로상담센터 찾기</h2>
+    <p>내 주변의 진로·진학 전문 기관을 찾아보세요.</p>
 </div>
 """, unsafe_allow_html=True)
 
-# ==========================================
-# 6. 통일된 카드 옵션 선택 영역
-# ==========================================
-st.markdown("#### ✨ 상담 옵션을 선택해 주세요")
 
-col1, col2, col3 = st.columns(3)
+# ==========================================
+# 7. 검색 화면
+# ==========================================
 
-def select_mode(mode_name, initial_ai_msg):
-    st.session_state.selected_mode = mode_name
-    if len(st.session_state.messages) == 0 or st.session_state.messages[-1]["content"] != initial_ai_msg:
-        st.session_state.messages.append({"role": "assistant", "content": initial_ai_msg})
+st.markdown("### 📍 내 주변 진로상담센터 검색")
+
+col1, col2 = st.columns(2)
 
 with col1:
-    if st.button("👤 나에게 맞는 학과 추천", key="btn1", use_container_width=True):
-        select_mode(
-            "학과 추천",
-            "🎓 **학과 추천 상담**을 선택하셨네요!\n\n본인에게 꼭 맞는 학과를 추천해 드리기 위해 몇 가지를 여쭤볼게요. 아래 채팅창에 자유롭게 적어주세요:\n1. 평소 흥미가 있거나 좋아하는 분야\n2. 자신 있는 과목이나 강점\n3. 본인의 성격이나 희망하는 대학 생활이 있다면 말해주세요!"
-        )
-    if st.button("📄 진로 정보 제공", key="btn4", use_container_width=True):
-        select_mode(
-            "진로 정보 제공",
-            "📄 **진로 정보 탐색** 모드입니다!\n\n궁금하신 직업군, 특정 학과, 혹은 '요즘 유망한 IT 분야 전망'처럼 알고 싶은 진로 주제나 분야를 채팅창에 입력해 주세요."
-        )
+    selected_region = st.selectbox(
+        "시·도",
+        list(REGIONS.keys()),
+        key="region_select"
+    )
 
 with col2:
-    if st.button("💼 직업 추천", key="btn2", use_container_width=True):
-        select_mode(
-            "직업 추천",
-            "💼 **맞춤 직업 추천**을 원하시네요!\n\n원하시는 직업을 찾아드리기 위해 정보가 필요해요. 채팅창에 아래 내용을 남겨주세요:\n- 좋아하는 일이나 취미\n- 일할 때 중요하게 생각하는 가치 (예: 연봉, 워라밸, 창의성, 안정성 등)"
-        )
-    if st.button("🧩 진로 탐구 활동 추천", key="btn5", use_container_width=True):
-        select_mode(
-            "진로 탐구 활동 추천",
-            "🧩 **진로 탐구 활동 추천** 모드입니다!\n\n생활기록부나 포트폴리오를 채울 활동을 찾아드릴게요. 현재 희망하는 학과/직업이나 관심 있는 탐구 주제(예: 인공지능 윤리, 기후변화 등)를 알려주세요."
+    selected_district = st.selectbox(
+        "시·군·구",
+        REGIONS[selected_region],
+        key="district_select"
+    )
+
+institution_type = st.selectbox(
+    "기관 유형",
+    [
+        "진로진학지원센터",
+        "진로상담센터",
+        "진로교육지원센터",
+        "전체 진로상담기관"
+    ],
+    key="institution_type"
+)
+
+st.caption(
+    "※ 현재 위치 기능 대신 지역을 직접 선택하도록 구성했습니다. "
+    "검색 결과는 앱 안에서 확인할 수 있습니다."
+)
+
+search_button = st.button(
+    "🔎 진로상담센터 검색하기",
+    type="primary",
+    use_container_width=True
+)
+
+
+# ==========================================
+# 8. 검색 결과 출력
+# ==========================================
+
+if search_button:
+
+    api_key = get_api_key()
+
+    if not api_key:
+
+        st.error(
+            "카카오 REST API 키가 설정되지 않았습니다."
         )
 
-with col3:
-    if st.button("💬 진로 고민 상담", key="btn3", use_container_width=True):
-        select_mode(
-            "진로 고민 상담",
-            "💬 **진로 고민 상담소**에 오신 것을 환영해요.\n\n요즘 어떤 점이 가장 고민이신가요? (예: 적성을 모르는 문제, 진로 결정의 부담감, 공부 방법 등) 편하게 이야기해 주세요."
+        st.info(
+            "Streamlit Cloud의 앱 설정에서 "
+            "KAKAO_REST_API_KEY를 등록해 주세요."
         )
-    if st.button("📚 추천 콘텐츠 보기\n(도서/영화 등)", key="btn6", use_container_width=True):
-        select_mode(
-            "추천 콘텐츠 보기",
-            "📚 **진로 영감 콘텐츠 추천** 모드입니다!\n\n관심 있는 분야나 현재 느끼는 진로 관련 감정/상태를 알려주시면 영감을 줄 수 있는 책, 영화, 강연 등을 추천해 드릴게요."
-        )
+
+    else:
+
+        with st.spinner("실제 진로상담센터를 검색하고 있습니다..."):
+
+            centers = search_centers(
+                selected_region,
+                selected_district,
+                api_key
+            )
+
+        if centers:
+
+            st.success(
+                f"총 {len(centers)}개의 검색 결과를 찾았습니다."
+            )
+
+            for center in centers:
+
+                with st.container():
+
+                    st.markdown(
+                        f"""
+                        <div class="result-box">
+                            <h4>🏫 {center["name"]}</h4>
+                            <p>
+                                <b>주소:</b> {center["address"]}
+                            </p>
+                            <p>
+                                <b>전화번호:</b> {center["phone"]}
+                            </p>
+                            <p>
+                                <b>기관 유형:</b> {center["category"]}
+                            </p>
+                        </div>
+                        """,
+                        unsafe_allow_html=True
+                    )
+
+                    if center["url"]:
+
+                        st.link_button(
+                            "기관 상세 정보 확인하기",
+                            center["url"],
+                            use_container_width=True
+                        )
+
+                    st.markdown("")
+
+        else:
+
+            st.warning(
+                "선택한 지역에서 진로상담센터를 찾지 못했습니다."
+            )
+
+            st.info(
+                "다른 지역을 선택하거나 "
+                "시·도 전체 검색을 이용해 주세요."
+            )
+
+
+# ==========================================
+# 9. 하단 안내
+# ==========================================
 
 st.markdown("---")
 
-# 현재 선택된 모드 안내 표시
-if st.session_state.selected_mode:
-    st.markdown(f'<div class="selected-mode-badge">📌 현재 선택된 옵션: {st.session_state.selected_mode}</div>', unsafe_allow_html=True)
+st.caption(
+    "본 서비스는 카카오 로컬 API를 활용하여 "
+    "진로·진학 관련 기관의 장소 정보를 검색합니다."
+)
 
-# ==========================================
-# 7. 대화 세션 및 스트리밍 처리
-# ==========================================
-# 이전 대화 내역 출력
-for message in st.session_state.messages:
-    with st.chat_message(message["role"]):
-        st.markdown(message["content"])
-
-# 사용자 입력 받기
-if prompt := st.chat_input("답변이나 궁금한 점을 여기에 입력하세요..."):
-    if not st.session_state.selected_mode:
-        st.session_state.selected_mode = "일반 상담"
-
-    st.session_state.messages.append({"role": "user", "content": prompt})
-    with st.chat_message("user"):
-        st.markdown(prompt)
-
-    with st.chat_message("assistant"):
-        message_placeholder = st.empty()
-        full_response = ""
-
-        # 과거 대화 맥락 수집
-        history_text = ""
-        for msg in st.session_state.messages[:-1]:
-            role_name = "사용자" if msg["role"] == "user" else "AI"
-            history_text += f"{role_name}: {msg['content']}\n"
-
-        prompt_instruction = f"""
-        당신은 따뜻하고 전문적인 대한민국 진로 전문 AI 상담사입니다.
-        현재 진행 중인 상담 모드: [{st.session_state.selected_mode}]
-        
-        {profile_summary}
-        
-        [이전 대화 맥락]
-        {history_text}
-        
-        [사용자의 최근 메시지]
-        {prompt}
-        
-        [필수 규칙 및 지침]
-        1. 학과 및 직업 추천 시 **현재 대한민국 대학교에 실제로 존재하고 개설되어 있는 학과명**과 **실제 존재하는 직업명**만을 추천하세요.
-        2. 학과/직업을 추천할 때 해당 분야의 핵심 진로, 배우는 내용, 그리고 사용자에게 추천하는 이유를 명확하게 설명하세요.
-        3. 친절하고 공감해주는 어조로 작성하고, 이모지와 마크다운 서식을 활용해 가독성 있게 답변해 주세요.
-        """
-
-        try:
-            # 최신 지원 모델 gemini-3.5-flash-lite로 스트리밍 생성
-            response = client.models.generate_content_stream(
-                model='gemini-3.5-flash-lite',
-                contents=prompt_instruction,
-                config=types.GenerateContentConfig(
-                    temperature=0.7,
-                    max_output_tokens=1500,
-                )
-            )
-
-            for chunk in response:
-                if chunk.text:
-                    full_response += chunk.text
-                    message_placeholder.markdown(full_response + "▌")
-
-            message_placeholder.markdown(full_response)
-            st.session_state.messages.append({"role": "assistant", "content": full_response})
-
-        except APIError as e:
-            message_placeholder.error(f"Gemini API 오류가 발생했습니다: {e.message}")
-        except Exception as e:
-            message_placeholder.error(f"오류가 발생했습니다: {str(e)}")
+st.caption(
+    "검색 결과가 실제 상담 운영 여부를 보장하지는 않습니다. "
+    "방문 전 기관에 전화하여 상담 가능 여부를 확인해 주세요."
+)
